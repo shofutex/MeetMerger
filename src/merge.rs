@@ -3,6 +3,9 @@ use crate::model::{Heat, Lane, Meet, SeedTime};
 pub struct MixedHeatSource {
     pub event_number: u32,
     pub heat_number: u32,
+    pub gender: String,
+    pub distance_m: u32,
+    pub stroke: String,
 }
 
 pub struct MixedHeat {
@@ -72,16 +75,37 @@ pub fn center_out_lane_order(lane_count: u32) -> Vec<u32> {
     order
 }
 
-pub fn suggested_header(sources: &[MixedHeatSource]) -> String {
-    let parts: Vec<String> = sources
+// "#1/2", plus " Boys/Girls" if the sources' events differ in gender, plus
+// " {min}-{max}" if the merged swimmers' ages actually vary, plus the
+// distance/stroke (taken from the first source, since a mixed heat only
+// makes sense when every source event races the same distance and stroke).
+pub fn suggested_header(sources: &[MixedHeatSource], ages: &[u32]) -> String {
+    let mut event_numbers: Vec<u32> = sources.iter().map(|s| s.event_number).collect();
+    event_numbers.sort_unstable();
+    event_numbers.dedup();
+    let numbers = event_numbers
         .iter()
-        .map(|s| format!("event {}, heat {}", s.event_number, s.heat_number))
-        .collect();
-    let joined = match parts.split_last() {
-        Some((last, rest)) if !rest.is_empty() => format!("{} and {}", rest.join(", "), last),
-        _ => parts.join(", "),
-    };
-    format!("Mixed heat: {joined}")
+        .map(u32::to_string)
+        .collect::<Vec<_>>()
+        .join("/");
+
+    let mut genders: Vec<&str> = sources.iter().map(|s| s.gender.as_str()).collect();
+    genders.sort_unstable();
+    genders.dedup();
+
+    let mut parts = vec![format!("#{numbers}")];
+    if genders.len() > 1 {
+        parts.push(genders.join("/"));
+    }
+    if let (Some(min), Some(max)) = (ages.iter().min(), ages.iter().max()) {
+        if min != max {
+            parts.push(format!("{min}-{max}"));
+        }
+    }
+    if let Some(first) = sources.first() {
+        parts.push(format!("{}m {}", first.distance_m, first.stroke));
+    }
+    parts.join(" ")
 }
 
 // NoTime sorts after every real time; SeedTime's derived PartialOrd puts
@@ -99,9 +123,11 @@ pub fn build_mixed_heat(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -
         .map(|(s, _)| MixedHeatSource {
             event_number: s.event_number,
             heat_number: s.heat_number,
+            gender: s.gender.clone(),
+            distance_m: s.distance_m,
+            stroke: s.stroke.clone(),
         })
         .collect();
-    let header = suggested_header(&header_sources);
 
     let mut swimmers: Vec<_> = sources
         .into_iter()
@@ -112,6 +138,9 @@ pub fn build_mixed_heat(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -
             .partial_cmp(&seed_key(b.seed_time))
             .unwrap()
     });
+
+    let ages: Vec<u32> = swimmers.iter().map(|s| s.age).collect();
+    let header = suggested_header(&header_sources, &ages);
 
     let mut lanes: Vec<Lane> = swimmers
         .into_iter()
@@ -149,43 +178,46 @@ mod tests {
         }
     }
 
+    fn source(event_number: u32, heat_number: u32, gender: &str) -> MixedHeatSource {
+        MixedHeatSource {
+            event_number,
+            heat_number,
+            gender: gender.to_string(),
+            distance_m: 25,
+            stroke: "Freestyle".to_string(),
+        }
+    }
+
     #[test]
-    fn suggested_header_two_sources() {
-        let sources = vec![
-            MixedHeatSource {
-                event_number: 1,
-                heat_number: 2,
-            },
-            MixedHeatSource {
-                event_number: 2,
-                heat_number: 1,
-            },
-        ];
+    fn suggested_header_same_gender_same_age() {
+        let sources = vec![source(1, 2, "Boys"), source(2, 1, "Boys")];
+        assert_eq!(suggested_header(&sources, &[10, 10]), "#1/2 25m Freestyle");
+    }
+
+    #[test]
+    fn suggested_header_mixed_gender() {
+        let sources = vec![source(1, 2, "Boys"), source(2, 1, "Girls")];
         assert_eq!(
-            suggested_header(&sources),
-            "Mixed heat: event 1, heat 2 and event 2, heat 1"
+            suggested_header(&sources, &[10, 10]),
+            "#1/2 Boys/Girls 25m Freestyle"
         );
     }
 
     #[test]
-    fn suggested_header_three_sources() {
-        let sources = vec![
-            MixedHeatSource {
-                event_number: 1,
-                heat_number: 1,
-            },
-            MixedHeatSource {
-                event_number: 2,
-                heat_number: 1,
-            },
-            MixedHeatSource {
-                event_number: 3,
-                heat_number: 1,
-            },
-        ];
+    fn suggested_header_mixed_ages() {
+        let sources = vec![source(1, 2, "Boys"), source(2, 1, "Boys")];
         assert_eq!(
-            suggested_header(&sources),
-            "Mixed heat: event 1, heat 1, event 2, heat 1 and event 3, heat 1"
+            suggested_header(&sources, &[8, 12]),
+            "#1/2 8-12 25m Freestyle"
+        );
+    }
+
+    #[test]
+    fn suggested_header_mixed_gender_and_ages() {
+        let sources = vec![source(1, 2, "Boys"), source(2, 1, "Girls")];
+        assert_eq!(
+            suggested_header(&sources, &[8, 12]),
+            "#1/2 Boys/Girls 8-12 25m Freestyle"
         );
     }
 
@@ -193,16 +225,7 @@ mod tests {
     fn anchor_event_is_the_earliest_source_event() {
         let mixed = MixedHeat {
             header: String::new(),
-            sources: vec![
-                MixedHeatSource {
-                    event_number: 5,
-                    heat_number: 1,
-                },
-                MixedHeatSource {
-                    event_number: 2,
-                    heat_number: 1,
-                },
-            ],
+            sources: vec![source(5, 1, "Boys"), source(2, 1, "Boys")],
             lanes: Vec::new(),
         };
         assert_eq!(mixed.anchor_event(), 2);
@@ -249,22 +272,7 @@ mod tests {
                 },
             ],
         };
-        let sources = vec![
-            (
-                MixedHeatSource {
-                    event_number: 1,
-                    heat_number: 1,
-                },
-                &heat_a,
-            ),
-            (
-                MixedHeatSource {
-                    event_number: 2,
-                    heat_number: 1,
-                },
-                &heat_b,
-            ),
-        ];
+        let sources = vec![(source(1, 1, "Boys"), &heat_a), (source(2, 1, "Boys"), &heat_b)];
 
         let mixed = build_mixed_heat(sources, 6);
 

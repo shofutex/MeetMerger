@@ -121,6 +121,9 @@ fn confirm_selection(state: &mut Wizard) -> Task<Message> {
                     MixedHeatSource {
                         event_number: event.number,
                         heat_number: heat.number,
+                        gender: event.gender.clone(),
+                        distance_m: event.distance_m,
+                        stroke: event.stroke.clone(),
                     },
                     heat,
                 ));
