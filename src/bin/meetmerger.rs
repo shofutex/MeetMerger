@@ -1,14 +1,11 @@
-mod model;
-mod parse;
-
 use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use model::Meet;
-use parse::Issue;
+use meetmerger::model::Meet;
+use meetmerger::parse::{self, Issue};
 
 /// Ingest a Swimtopia Meet Maestro heat sheet PDF and print the parsed
 /// events/heats/lanes back out so the import can be validated against the
@@ -62,7 +59,7 @@ fn print_meet(meet: &Meet) {
     }
 }
 
-fn print_issues(issues: &[Issue], corrections_path: &PathBuf) {
+fn print_issues(issues: &[Issue], corrections_path: &std::path::Path) {
     if issues.is_empty() {
         return;
     }
