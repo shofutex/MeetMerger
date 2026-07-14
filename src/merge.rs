@@ -6,6 +6,7 @@ pub struct MixedHeatSource {
     pub gender: String,
     pub distance_m: u32,
     pub stroke: String,
+    pub age_group: String,
 }
 
 pub struct MixedHeat {
@@ -76,9 +77,16 @@ pub fn center_out_lane_order(lane_count: u32) -> Vec<u32> {
 }
 
 // "#1/2", plus " Boys/Girls" if the sources' events differ in gender, plus
-// " {min}-{max}" if the merged swimmers' ages actually vary, plus the
-// distance/stroke (taken from the first source, since a mixed heat only
-// makes sense when every source event races the same distance and stroke).
+// an age label, plus the distance/stroke (taken from the first source,
+// since a mixed heat only makes sense when every source event races the
+// same distance and stroke).
+//
+// The age label preserves open-ended age groups: merging in an event whose
+// age group reads "... & Under" means younger swimmers than any present in
+// this particular heat could show up there, so the label reports "{max} &
+// Under" rather than a literal "{min}-{max}" range; symmetrically, an
+// "... & Over" source reports "{min} & Over". Otherwise it's a plain
+// "{min}-{max}", omitted entirely when the merged swimmers are all one age.
 pub fn suggested_header(sources: &[MixedHeatSource], ages: &[u32]) -> String {
     let mut event_numbers: Vec<u32> = sources.iter().map(|s| s.event_number).collect();
     event_numbers.sort_unstable();
@@ -93,14 +101,26 @@ pub fn suggested_header(sources: &[MixedHeatSource], ages: &[u32]) -> String {
     genders.sort_unstable();
     genders.dedup();
 
+    let has_under = sources
+        .iter()
+        .any(|s| s.age_group.to_lowercase().contains("under"));
+    let has_over = sources
+        .iter()
+        .any(|s| s.age_group.to_lowercase().contains("over"));
+
+    let age_label = match (ages.iter().min(), ages.iter().max()) {
+        (Some(_), Some(max)) if has_under && !has_over => Some(format!("{max} & Under")),
+        (Some(min), Some(_)) if has_over && !has_under => Some(format!("{min} & Over")),
+        (Some(min), Some(max)) if min != max => Some(format!("{min}-{max}")),
+        _ => None,
+    };
+
     let mut parts = vec![format!("#{numbers}")];
     if genders.len() > 1 {
         parts.push(genders.join("/"));
     }
-    if let (Some(min), Some(max)) = (ages.iter().min(), ages.iter().max()) {
-        if min != max {
-            parts.push(format!("{min}-{max}"));
-        }
+    if let Some(age_label) = age_label {
+        parts.push(age_label);
     }
     if let Some(first) = sources.first() {
         parts.push(format!("{}m {}", first.distance_m, first.stroke));
@@ -126,6 +146,7 @@ pub fn build_mixed_heat(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -
             gender: s.gender.clone(),
             distance_m: s.distance_m,
             stroke: s.stroke.clone(),
+            age_group: s.age_group.clone(),
         })
         .collect();
 
@@ -179,12 +200,22 @@ mod tests {
     }
 
     fn source(event_number: u32, heat_number: u32, gender: &str) -> MixedHeatSource {
+        source_with_age_group(event_number, heat_number, gender, "10-11")
+    }
+
+    fn source_with_age_group(
+        event_number: u32,
+        heat_number: u32,
+        gender: &str,
+        age_group: &str,
+    ) -> MixedHeatSource {
         MixedHeatSource {
             event_number,
             heat_number,
             gender: gender.to_string(),
             distance_m: 25,
             stroke: "Freestyle".to_string(),
+            age_group: age_group.to_string(),
         }
     }
 
@@ -218,6 +249,30 @@ mod tests {
         assert_eq!(
             suggested_header(&sources, &[8, 12]),
             "#1/2 Boys/Girls 8-12 25m Freestyle"
+        );
+    }
+
+    #[test]
+    fn suggested_header_merging_under_age_group_uses_oldest_age() {
+        let sources = vec![
+            source_with_age_group(1, 2, "Boys", "6 & Under"),
+            source_with_age_group(2, 1, "Boys", "7-8"),
+        ];
+        assert_eq!(
+            suggested_header(&sources, &[6, 7, 8]),
+            "#1/2 8 & Under 25m Freestyle"
+        );
+    }
+
+    #[test]
+    fn suggested_header_merging_over_age_group_uses_youngest_age() {
+        let sources = vec![
+            source_with_age_group(1, 2, "Boys", "11-12"),
+            source_with_age_group(2, 1, "Boys", "13 & Over"),
+        ];
+        assert_eq!(
+            suggested_header(&sources, &[11, 12, 13]),
+            "#1/2 11 & Over 25m Freestyle"
         );
     }
 

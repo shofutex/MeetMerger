@@ -124,6 +124,7 @@ fn confirm_selection(state: &mut Wizard) -> Task<Message> {
                         gender: event.gender.clone(),
                         distance_m: event.distance_m,
                         stroke: event.stroke.clone(),
+                        age_group: event.age_group.clone(),
                     },
                     heat,
                 ));
