@@ -53,4 +53,5 @@ pub enum Message {
 
     Finish,
     BackToSelectHeats,
+    RenameMixedHeat(usize, String),
 }

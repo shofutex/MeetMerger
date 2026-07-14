@@ -11,6 +11,19 @@ pub struct MixedHeat {
     pub lanes: Vec<Lane>,
 }
 
+impl MixedHeat {
+    // Where this mixed heat naturally falls in program order: right after
+    // the earliest event it draws from, before that event's later heats
+    // finish, and before its later source event(s) begin.
+    pub fn anchor_event(&self) -> u32 {
+        self.sources
+            .iter()
+            .map(|s| s.event_number)
+            .min()
+            .unwrap_or(0)
+    }
+}
+
 pub fn infer_lane_capacity(meet: &Meet) -> u32 {
     meet.events
         .iter()
@@ -174,6 +187,25 @@ mod tests {
             suggested_header(&sources),
             "Mixed heat: event 1, heat 1, event 2, heat 1 and event 3, heat 1"
         );
+    }
+
+    #[test]
+    fn anchor_event_is_the_earliest_source_event() {
+        let mixed = MixedHeat {
+            header: String::new(),
+            sources: vec![
+                MixedHeatSource {
+                    event_number: 5,
+                    heat_number: 1,
+                },
+                MixedHeatSource {
+                    event_number: 2,
+                    heat_number: 1,
+                },
+            ],
+            lanes: Vec::new(),
+        };
+        assert_eq!(mixed.anchor_event(), 2);
     }
 
     fn swimmer(name: &str, seed_time: SeedTime) -> Swimmer {

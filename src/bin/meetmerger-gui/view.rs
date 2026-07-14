@@ -222,22 +222,21 @@ fn view_final_preview(state: &Wizard) -> Element<'_, Message> {
             .iter()
             .filter(|h| !state.consumed.contains(&(event.number, h.number)))
             .collect();
-        if remaining.is_empty() {
-            continue;
-        }
-        col = col.push(text(event_header(event)).size(16));
-        for heat in remaining {
-            col = col.push(text(format!("  {}", heat_header(heat))));
-            for lane in &heat.lanes {
-                col = col.push(text(format!("    {}", lane_line(lane))));
+        if !remaining.is_empty() {
+            col = col.push(text(event_header(event)).size(16));
+            for heat in remaining {
+                col = col.push(text(format!("  {}", heat_header(heat))));
+                for lane in &heat.lanes {
+                    col = col.push(text(format!("    {}", lane_line(lane))));
+                }
             }
         }
-    }
 
-    if !state.mixed_heats.is_empty() {
-        col = col.push(text("Mixed heats").size(16));
-        for mixed in &state.mixed_heats {
-            col = col.push(mixed_heat_view(mixed));
+        // Mixed heats appear right after the earliest event they draw from.
+        for (index, mixed) in state.mixed_heats.iter().enumerate() {
+            if mixed.anchor_event() == event.number {
+                col = col.push(mixed_heat_view(index, mixed));
+            }
         }
     }
 
@@ -245,8 +244,12 @@ fn view_final_preview(state: &Wizard) -> Element<'_, Message> {
     col.into()
 }
 
-fn mixed_heat_view(mixed: &MixedHeat) -> Element<'_, Message> {
-    let mut col = column![text(mixed.header.clone())].spacing(2);
+fn mixed_heat_view(index: usize, mixed: &MixedHeat) -> Element<'_, Message> {
+    let mut col = column![
+        text_input("Mixed heat header", &mixed.header)
+            .on_input(move |header| Message::RenameMixedHeat(index, header))
+    ]
+    .spacing(2);
     for lane in &mixed.lanes {
         col = col.push(text(format!("  {}", lane_line(lane))));
     }

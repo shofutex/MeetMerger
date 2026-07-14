@@ -98,6 +98,12 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             state.step = Step::SelectHeats;
             Task::none()
         }
+        Message::RenameMixedHeat(index, header) => {
+            if let Some(mixed) = state.mixed_heats.get_mut(index) {
+                mixed.header = header;
+            }
+            Task::none()
+        }
     }
 }
 
