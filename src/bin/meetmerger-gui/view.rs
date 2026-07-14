@@ -7,7 +7,7 @@ use meetmerger::model::{Event, Heat, Lane};
 use crate::state::{Message, Step, Wizard};
 
 pub fn view(state: &Wizard) -> Element<'_, Message> {
-    let content = match state.step {
+    let (body, actions) = match state.step {
         Step::Load => view_load(state),
         Step::Review => view_review(state),
         Step::SelectHeats => view_select_heats(state),
@@ -15,11 +15,17 @@ pub fn view(state: &Wizard) -> Element<'_, Message> {
         Step::FinalPreview => view_final_preview(state),
     };
 
-    container(scrollable(content).width(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(16)
-        .into()
+    container(
+        column![
+            scrollable(body).width(Length::Fill).height(Length::Fill),
+            actions,
+        ]
+        .spacing(12),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .padding(16)
+    .into()
 }
 
 fn lane_line(lane: &Lane) -> String {
@@ -46,7 +52,7 @@ fn event_header(event: &Event) -> String {
     )
 }
 
-fn view_load(state: &Wizard) -> Element<'_, Message> {
+fn view_load(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     let pdf_label = match &state.pdf_path {
         Some(path) => format!("PDF: {}", path.display()),
         None => "No PDF selected".to_string(),
@@ -71,13 +77,6 @@ fn view_load(state: &Wizard) -> Element<'_, Message> {
     ]
     .spacing(12);
 
-    let load_button = if state.pdf_path.is_some() && !state.is_loading {
-        button("Load").on_press(Message::LoadMeet)
-    } else {
-        button("Load")
-    };
-    col = col.push(load_button);
-
     if state.is_loading {
         col = col.push(text("Loading..."));
     }
@@ -93,16 +92,25 @@ fn view_load(state: &Wizard) -> Element<'_, Message> {
         }
     }
 
+    let load_button = if state.pdf_path.is_some() && !state.is_loading {
+        button("Load").on_press(Message::LoadMeet)
+    } else {
+        button("Load")
+    };
+    let mut actions = row![load_button].spacing(12);
     if state.meet.is_some() {
-        col = col.push(button("Continue").on_press(Message::GoToReview));
+        actions = actions.push(button("Continue").on_press(Message::GoToReview));
     }
 
-    col.into()
+    (col.into(), actions.into())
 }
 
-fn view_review(state: &Wizard) -> Element<'_, Message> {
+fn view_review(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     let Some(meet) = &state.meet else {
-        return text("Nothing loaded yet.").into();
+        return (
+            text("Nothing loaded yet.").into(),
+            row![].spacing(12).into(),
+        );
     };
 
     let mut col = column![text(format!("{} — {}", meet.title, meet.date)).size(24)].spacing(8);
@@ -117,13 +125,16 @@ fn view_review(state: &Wizard) -> Element<'_, Message> {
         }
     }
 
-    col = col.push(button("Continue to merge").on_press(Message::GoToSelectHeats));
-    col.into()
+    let actions = row![button("Continue to merge").on_press(Message::GoToSelectHeats)].spacing(12);
+    (col.into(), actions.into())
 }
 
-fn view_select_heats(state: &Wizard) -> Element<'_, Message> {
+fn view_select_heats(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     let Some(meet) = &state.meet else {
-        return text("Nothing loaded yet.").into();
+        return (
+            text("Nothing loaded yet.").into(),
+            row![].spacing(12).into(),
+        );
     };
 
     let mut col = column![text(format!("Pool lane capacity: {}", state.lane_capacity))].spacing(6);
@@ -179,13 +190,15 @@ fn view_select_heats(state: &Wizard) -> Element<'_, Message> {
         button("Finish")
     });
 
-    col = col.push(actions);
-    col.into()
+    (col.into(), actions.into())
 }
 
-fn view_mixed_heat_edit(state: &Wizard) -> Element<'_, Message> {
+fn view_mixed_heat_edit(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     let Some(pending) = &state.pending else {
-        return text("No mixed heat in progress.").into();
+        return (
+            text("No mixed heat in progress.").into(),
+            row![].spacing(12).into(),
+        );
     };
 
     let mut col = column![
@@ -198,20 +211,21 @@ fn view_mixed_heat_edit(state: &Wizard) -> Element<'_, Message> {
         col = col.push(text(lane_line(lane)));
     }
 
-    col = col.push(
-        row![
-            button("Confirm").on_press(Message::ConfirmMixedHeat),
-            button("Cancel").on_press(Message::CancelMixedHeat),
-        ]
-        .spacing(12),
-    );
+    let actions = row![
+        button("Confirm").on_press(Message::ConfirmMixedHeat),
+        button("Cancel").on_press(Message::CancelMixedHeat),
+    ]
+    .spacing(12);
 
-    col.into()
+    (col.into(), actions.into())
 }
 
-fn view_final_preview(state: &Wizard) -> Element<'_, Message> {
+fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     let Some(meet) = &state.meet else {
-        return text("Nothing loaded yet.").into();
+        return (
+            text("Nothing loaded yet.").into(),
+            row![].spacing(12).into(),
+        );
     };
 
     let mut col = column![text("Final preview").size(24)].spacing(8);
@@ -240,8 +254,8 @@ fn view_final_preview(state: &Wizard) -> Element<'_, Message> {
         }
     }
 
-    col = col.push(button("Back").on_press(Message::BackToSelectHeats));
-    col.into()
+    let actions = row![button("Back").on_press(Message::BackToSelectHeats)].spacing(12);
+    (col.into(), actions.into())
 }
 
 fn mixed_heat_view(index: usize, mixed: &MixedHeat) -> Element<'_, Message> {
