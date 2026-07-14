@@ -15,7 +15,7 @@ pub fn view(state: &Wizard) -> Element<'_, Message> {
         Step::FinalPreview => view_final_preview(state),
     };
 
-    container(scrollable(content))
+    container(scrollable(content).width(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(16)
