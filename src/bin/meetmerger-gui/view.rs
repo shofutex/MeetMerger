@@ -1,6 +1,7 @@
 use iced::widget::{button, checkbox, column, container, row, scrollable, text, text_input};
 use iced::{Element, Length};
 
+use meetmerger::export;
 use meetmerger::merge::{self, MixedHeat};
 use meetmerger::model::{Event, Heat, Lane};
 
@@ -13,6 +14,7 @@ pub fn view(state: &Wizard) -> Element<'_, Message> {
         Step::SelectHeats => view_select_heats(state),
         Step::MixedHeatEdit => view_mixed_heat_edit(state),
         Step::FinalPreview => view_final_preview(state),
+        Step::TeamAbbreviations => view_team_abbreviations(state),
     };
 
     container(
@@ -254,7 +256,72 @@ fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Mess
         }
     }
 
-    let actions = row![button("Back").on_press(Message::BackToSelectHeats)].spacing(12);
+    let actions = row![
+        button("Back").on_press(Message::BackToSelectHeats),
+        button("Export PDF...").on_press(Message::GoToTeamAbbreviations),
+    ]
+    .spacing(12);
+    (col.into(), actions.into())
+}
+
+fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
+    let Some(meet) = &state.meet else {
+        return (
+            text("Nothing loaded yet.").into(),
+            row![].spacing(12).into(),
+        );
+    };
+
+    let mut col = column![text(
+        "Optional team abbreviations for the printed PDF (blank = full name):"
+    )
+    .size(18)]
+    .spacing(8);
+
+    for team in export::distinct_teams(meet, &state.consumed, &state.mixed_heats) {
+        let value = state
+            .team_abbreviations
+            .get(&team)
+            .cloned()
+            .unwrap_or_default();
+        col = col.push(
+            row![
+                text(team.clone()),
+                text_input("abbreviation", &value)
+                    .on_input(move |v| Message::TeamAbbreviationChanged(team.clone(), v)),
+            ]
+            .spacing(12),
+        );
+    }
+
+    col = col.push(
+        row![
+            text("Start event # (IM Carnival order, optional):"),
+            text_input("1", &state.export_start_event).on_input(Message::StartEventChanged),
+        ]
+        .spacing(12),
+    );
+
+    if state.is_exporting {
+        col = col.push(text("Exporting..."));
+    }
+    if let Some(result) = &state.export_result {
+        match result {
+            Ok(path) => col = col.push(text(format!("Saved to {}", path.display()))),
+            Err(err) => col = col.push(text(format!("Export failed: {err}"))),
+        }
+    }
+
+    let export_button = if state.is_exporting {
+        button("Export PDF")
+    } else {
+        button("Export PDF").on_press(Message::ExportPdf)
+    };
+    let actions = row![
+        button("Back").on_press(Message::BackToFinalPreview),
+        export_button,
+    ]
+    .spacing(12);
     (col.into(), actions.into())
 }
 

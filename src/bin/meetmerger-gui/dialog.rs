@@ -1,5 +1,8 @@
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use meetmerger::export;
+use meetmerger::merge::MixedHeat;
 use meetmerger::model::Meet;
 use meetmerger::parse::{self, Issue};
 
@@ -47,4 +50,27 @@ pub async fn load_and_parse(
     };
     let text = parse::apply_corrections(&parse::normalize_corruption(&raw), &corrections);
     Ok(parse::parse_meet(&text))
+}
+
+pub async fn pick_save_path(default_name: String) -> Option<PathBuf> {
+    rfd::AsyncFileDialog::new()
+        .set_file_name(default_name)
+        .add_filter("PDF", &["pdf"])
+        .save_file()
+        .await
+        .map(|f| f.path().to_path_buf())
+}
+
+pub async fn export_pdf(
+    meet: Meet,
+    consumed: HashSet<(u32, u32)>,
+    mixed_heats: Vec<MixedHeat>,
+    abbreviations: HashMap<String, String>,
+    start_event: u32,
+    path: PathBuf,
+) -> Result<PathBuf, String> {
+    let events =
+        export::build_print_events(&meet, &consumed, &mixed_heats, &abbreviations, start_event);
+    export::write_pdf(&meet.title, &events, &path)?;
+    Ok(path)
 }

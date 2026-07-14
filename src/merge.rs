@@ -1,5 +1,6 @@
 use crate::model::{Heat, Lane, Meet, SeedTime};
 
+#[derive(Clone)]
 pub struct MixedHeatSource {
     pub event_number: u32,
     pub heat_number: u32,
@@ -9,6 +10,7 @@ pub struct MixedHeatSource {
     pub age_group: String,
 }
 
+#[derive(Clone)]
 pub struct MixedHeat {
     pub header: String,
     pub sources: Vec<MixedHeatSource>,

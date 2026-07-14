@@ -104,7 +104,61 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             }
             Task::none()
         }
+        Message::StartEventChanged(value) => {
+            state.export_start_event = value;
+            Task::none()
+        }
+        Message::GoToTeamAbbreviations => {
+            state.step = Step::TeamAbbreviations;
+            Task::none()
+        }
+        Message::BackToFinalPreview => {
+            state.step = Step::FinalPreview;
+            Task::none()
+        }
+        Message::TeamAbbreviationChanged(team, abbreviation) => {
+            state.team_abbreviations.insert(team, abbreviation);
+            Task::none()
+        }
+        Message::ExportPdf => {
+            let Some(meet) = &state.meet else {
+                return Task::none();
+            };
+            let default_name = format!("{}_heat_sheet.pdf", sanitize_filename(&meet.title));
+            state.export_result = None;
+            Task::perform(dialog::pick_save_path(default_name), Message::ExportPathPicked)
+        }
+        Message::ExportPathPicked(path) => {
+            let (Some(path), Some(meet)) = (path, state.meet.clone()) else {
+                return Task::none();
+            };
+            let start_event = state.export_start_event.trim().parse().unwrap_or(1);
+            state.is_exporting = true;
+            Task::perform(
+                dialog::export_pdf(
+                    meet,
+                    state.consumed.clone(),
+                    state.mixed_heats.clone(),
+                    state.team_abbreviations.clone(),
+                    start_event,
+                    path,
+                ),
+                Message::PdfExported,
+            )
+        }
+        Message::PdfExported(result) => {
+            state.is_exporting = false;
+            state.export_result = Some(result);
+            Task::none()
+        }
     }
+}
+
+fn sanitize_filename(title: &str) -> String {
+    title
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect()
 }
 
 fn confirm_selection(state: &mut Wizard) -> Task<Message> {

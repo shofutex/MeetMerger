@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use meetmerger::merge::MixedHeat;
@@ -13,6 +13,7 @@ pub enum Step {
     SelectHeats,
     MixedHeatEdit,
     FinalPreview,
+    TeamAbbreviations,
 }
 
 #[derive(Default)]
@@ -31,6 +32,11 @@ pub struct Wizard {
     // in-progress picks for the next mixed heat
     pub selection: HashSet<(u32, u32)>,
     pub pending: Option<MixedHeat>,
+
+    pub export_start_event: String,
+    pub team_abbreviations: HashMap<String, String>,
+    pub is_exporting: bool,
+    pub export_result: Option<Result<PathBuf, String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,4 +60,12 @@ pub enum Message {
     Finish,
     BackToSelectHeats,
     RenameMixedHeat(usize, String),
+
+    StartEventChanged(String),
+    GoToTeamAbbreviations,
+    BackToFinalPreview,
+    TeamAbbreviationChanged(String, String),
+    ExportPdf,
+    ExportPathPicked(Option<PathBuf>),
+    PdfExported(Result<PathBuf, String>),
 }
