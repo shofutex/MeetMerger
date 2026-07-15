@@ -22,7 +22,10 @@ impl fmt::Display for Issue {
                 write!(f, "line {line}: couldn't parse: {text:?}")
             }
             Issue::UnresolvedCharacter { context } => {
-                write!(f, "unresolved character ({CORRUPTION_MARKER}) in: {context}")
+                write!(
+                    f,
+                    "unresolved character ({CORRUPTION_MARKER}) in: {context}"
+                )
             }
         }
     }
@@ -50,10 +53,7 @@ static LANE_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// Everything else is left for the caller to patch via a corrections file.
 pub fn normalize_corruption(text: &str) -> String {
     let text = text.replace('\0', &CORRUPTION_MARKER.to_string());
-    text.replace(
-        &format!("Butter{CORRUPTION_MARKER}y"),
-        "Butterfly",
-    )
+    text.replace(&format!("Butter{CORRUPTION_MARKER}y"), "Butterfly")
 }
 
 /// Apply user-supplied literal find/replace pairs, in order, to patch names
@@ -155,7 +155,10 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
                 seed_time: parse_seed_time(&caps["time"]),
             });
             if let Some(swimmer) = &swimmer {
-                let context = format!("{}, {} ({})", swimmer.last_name, swimmer.first_name, swimmer.team);
+                let context = format!(
+                    "{}, {} ({})",
+                    swimmer.last_name, swimmer.first_name, swimmer.team
+                );
                 if context.contains(CORRUPTION_MARKER) {
                     issues.push(Issue::UnresolvedCharacter { context });
                 }

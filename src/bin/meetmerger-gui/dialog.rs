@@ -74,3 +74,21 @@ pub async fn export_pdf(
     export::write_pdf(&meet.title, &events, &path)?;
     Ok(path)
 }
+
+#[allow(clippy::too_many_arguments)]
+pub async fn export_timer_sheets(
+    meet: Meet,
+    consumed: HashSet<(u32, u32)>,
+    mixed_heats: Vec<MixedHeat>,
+    abbreviations: HashMap<String, String>,
+    start_event: u32,
+    lane_capacity: u32,
+    heats_per_page: Option<u32>,
+    path: PathBuf,
+) -> Result<PathBuf, String> {
+    let events =
+        export::build_print_events(&meet, &consumed, &mixed_heats, &abbreviations, start_event);
+    let pages = export::build_timer_pages(&events, lane_capacity);
+    export::write_timer_pdf(&meet.title, &pages, heats_per_page, &path)?;
+    Ok(path)
+}

@@ -37,6 +37,10 @@ pub struct Wizard {
     pub team_abbreviations: HashMap<String, String>,
     pub is_exporting: bool,
     pub export_result: Option<Result<PathBuf, String>>,
+
+    pub heats_per_page: String,
+    pub is_exporting_timers: bool,
+    pub timer_export_result: Option<Result<PathBuf, String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -68,4 +72,9 @@ pub enum Message {
     ExportPdf,
     ExportPathPicked(Option<PathBuf>),
     PdfExported(Result<PathBuf, String>),
+
+    HeatsPerPageChanged(String),
+    ExportTimerSheets,
+    TimerExportPathPicked(Option<PathBuf>),
+    TimerSheetsExported(Result<PathBuf, String>),
 }

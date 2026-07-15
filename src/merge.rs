@@ -329,7 +329,10 @@ mod tests {
                 },
             ],
         };
-        let sources = vec![(source(1, 1, "Boys"), &heat_a), (source(2, 1, "Boys"), &heat_b)];
+        let sources = vec![
+            (source(1, 1, "Boys"), &heat_a),
+            (source(2, 1, "Boys"), &heat_b),
+        ];
 
         let mixed = build_mixed_heat(sources, 6);
 

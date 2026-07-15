@@ -272,11 +272,11 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
         );
     };
 
-    let mut col = column![text(
-        "Optional team abbreviations for the printed PDF (blank = full name):"
-    )
-    .size(18)]
-    .spacing(8);
+    let mut col =
+        column![
+            text("Optional team abbreviations for the printed PDF (blank = full name):").size(18)
+        ]
+        .spacing(8);
 
     for team in export::distinct_teams(meet, &state.consumed, &state.mixed_heats) {
         let value = state
@@ -302,13 +302,31 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
         .spacing(12),
     );
 
+    col = col.push(
+        row![
+            text("Heats per page for timer sheets (optional):"),
+            text_input("unlimited", &state.heats_per_page).on_input(Message::HeatsPerPageChanged),
+        ]
+        .spacing(12),
+    );
+
     if state.is_exporting {
-        col = col.push(text("Exporting..."));
+        col = col.push(text("Exporting heat sheet..."));
     }
     if let Some(result) = &state.export_result {
         match result {
-            Ok(path) => col = col.push(text(format!("Saved to {}", path.display()))),
-            Err(err) => col = col.push(text(format!("Export failed: {err}"))),
+            Ok(path) => col = col.push(text(format!("Heat sheet saved to {}", path.display()))),
+            Err(err) => col = col.push(text(format!("Heat sheet export failed: {err}"))),
+        }
+    }
+
+    if state.is_exporting_timers {
+        col = col.push(text("Exporting timer sheets..."));
+    }
+    if let Some(result) = &state.timer_export_result {
+        match result {
+            Ok(path) => col = col.push(text(format!("Timer sheets saved to {}", path.display()))),
+            Err(err) => col = col.push(text(format!("Timer sheets export failed: {err}"))),
         }
     }
 
@@ -317,19 +335,23 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
     } else {
         button("Export PDF").on_press(Message::ExportPdf)
     };
+    let timer_button = if state.is_exporting_timers {
+        button("Export Timer Sheets")
+    } else {
+        button("Export Timer Sheets").on_press(Message::ExportTimerSheets)
+    };
     let actions = row![
         button("Back").on_press(Message::BackToFinalPreview),
         export_button,
+        timer_button,
     ]
     .spacing(12);
     (col.into(), actions.into())
 }
 
 fn mixed_heat_view(index: usize, mixed: &MixedHeat) -> Element<'_, Message> {
-    let mut col = column![
-        text_input("Mixed heat header", &mixed.header)
-            .on_input(move |header| Message::RenameMixedHeat(index, header))
-    ]
+    let mut col = column![text_input("Mixed heat header", &mixed.header)
+        .on_input(move |header| Message::RenameMixedHeat(index, header))]
     .spacing(2);
     for lane in &mixed.lanes {
         col = col.push(text(format!("  {}", lane_line(lane))));

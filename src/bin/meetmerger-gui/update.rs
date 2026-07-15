@@ -126,7 +126,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             };
             let default_name = format!("{}_heat_sheet.pdf", sanitize_filename(&meet.title));
             state.export_result = None;
-            Task::perform(dialog::pick_save_path(default_name), Message::ExportPathPicked)
+            Task::perform(
+                dialog::pick_save_path(default_name),
+                Message::ExportPathPicked,
+            )
         }
         Message::ExportPathPicked(path) => {
             let (Some(path), Some(meet)) = (path, state.meet.clone()) else {
@@ -149,6 +152,47 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
         Message::PdfExported(result) => {
             state.is_exporting = false;
             state.export_result = Some(result);
+            Task::none()
+        }
+        Message::HeatsPerPageChanged(value) => {
+            state.heats_per_page = value;
+            Task::none()
+        }
+        Message::ExportTimerSheets => {
+            let Some(meet) = &state.meet else {
+                return Task::none();
+            };
+            let default_name = format!("{}_timer_sheets.pdf", sanitize_filename(&meet.title));
+            state.timer_export_result = None;
+            Task::perform(
+                dialog::pick_save_path(default_name),
+                Message::TimerExportPathPicked,
+            )
+        }
+        Message::TimerExportPathPicked(path) => {
+            let (Some(path), Some(meet)) = (path, state.meet.clone()) else {
+                return Task::none();
+            };
+            let start_event = state.export_start_event.trim().parse().unwrap_or(1);
+            let heats_per_page = state.heats_per_page.trim().parse().ok().filter(|n| *n > 0);
+            state.is_exporting_timers = true;
+            Task::perform(
+                dialog::export_timer_sheets(
+                    meet,
+                    state.consumed.clone(),
+                    state.mixed_heats.clone(),
+                    state.team_abbreviations.clone(),
+                    start_event,
+                    state.lane_capacity,
+                    heats_per_page,
+                    path,
+                ),
+                Message::TimerSheetsExported,
+            )
+        }
+        Message::TimerSheetsExported(result) => {
+            state.is_exporting_timers = false;
+            state.timer_export_result = Some(result);
             Task::none()
         }
     }

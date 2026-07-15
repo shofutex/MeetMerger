@@ -49,6 +49,27 @@ const TIME_X: f32 = 52.0;
 // the EXH badge has room next to whatever's left on the name's line.
 const NAME_WRAP_THRESHOLD: usize = 15;
 
+// Timer sheets print single-column, full page width, one page per lane.
+const TIMER_CONTENT_WIDTH: f32 = PAGE_W - 2.0 * MARGIN;
+const TIMER_LANE_X: f32 = 0.0;
+const TIMER_HEAT_X: f32 = 16.0;
+// Base position (38.0mm) plus 10 space-widths in 7pt Helvetica (Adobe AFM:
+// space = 278/1000 em -> 1.946pt -> 0.6865mm; x10 = 6.865mm), per the request
+// to move swimmer names 10 spaces to the right. Re-derive if the row font
+// size ever changes.
+const TIMER_NAME_X: f32 = 38.0 + 6.865;
+const TIMER_TEAM_X: f32 = 120.0;
+const TIMER_BLANKS_X: f32 = 136.0;
+const TIMER_BLANK_COUNT: usize = 4;
+const TIMER_BLANK_GAP: f32 = 3.0;
+
+const TIMER_EVENT_LINE_H: f32 = 5.0;
+// Extra room between the event divider and the first heat row underneath it.
+const TIMER_DIVIDER_LINE_H: f32 = 7.0;
+const TIMER_ROW_H: f32 = 5.5;
+const TIMER_ROW_GAP_H: f32 = 2.5;
+const TIMER_EVENT_GAP_H: f32 = 8.0;
+
 pub fn rotate_events(events: &[Event], start_event: u32) -> Vec<&Event> {
     let split = events
         .iter()
@@ -91,10 +112,7 @@ fn abbreviate<'a>(team: &'a str, abbreviations: &'a HashMap<String, String>) -> 
         .unwrap_or(team)
 }
 
-fn swimmer_rows(
-    lanes: &[Lane],
-    abbreviations: &HashMap<String, String>,
-) -> Vec<PrintSwimmer> {
+fn swimmer_rows(lanes: &[Lane], abbreviations: &HashMap<String, String>) -> Vec<PrintSwimmer> {
     lanes
         .iter()
         .filter_map(|lane| {
@@ -213,6 +231,301 @@ pub fn build_print_events(
         }
     }
     events
+}
+
+pub struct TimerSwimmer {
+    pub last_name: String,
+    pub first_name: String,
+    pub age: u32,
+    pub team: String,
+}
+
+pub struct TimerRow {
+    pub heat_label: String,
+    // None when this lane is empty for this heat — still printed as "No
+    // swimmer" so a timer can follow every heat of the event, not just the
+    // ones where their lane races.
+    pub swimmer: Option<TimerSwimmer>,
+}
+
+pub struct TimerEvent {
+    pub event_name: String,
+    pub rows: Vec<TimerRow>,
+}
+
+pub struct TimerPage {
+    pub lane: u32,
+    pub events: Vec<TimerEvent>,
+}
+
+// One page per lane (1..=lane_capacity), every event and every one of its
+// heats, in the same print order as the heat sheet. A heat where this lane
+// has no swimmer still gets a row (with no `TimerSwimmer`) rather than being
+// skipped, so the timer can track along heat by heat.
+pub fn build_timer_pages(events: &[PrintEvent], lane_capacity: u32) -> Vec<TimerPage> {
+    (1..=lane_capacity)
+        .map(|lane| {
+            let timer_events = events
+                .iter()
+                .map(|event| {
+                    let rows: Vec<TimerRow> = event
+                        .heats
+                        .iter()
+                        .map(|heat| TimerRow {
+                            heat_label: heat.heat_label.clone(),
+                            swimmer: heat.swimmers.iter().find(|s| s.lane == lane).map(|s| {
+                                TimerSwimmer {
+                                    last_name: s.last_name.clone(),
+                                    first_name: s.first_name.clone(),
+                                    age: s.age,
+                                    team: s.team.clone(),
+                                }
+                            }),
+                        })
+                        .collect();
+                    TimerEvent {
+                        event_name: event.event_name.clone(),
+                        rows,
+                    }
+                })
+                .collect();
+            TimerPage {
+                lane,
+                events: timer_events,
+            }
+        })
+        .collect()
+}
+
+enum TimerLine<'a> {
+    EventName(&'a str),
+    Divider,
+    Row(&'a str, Option<(&'a str, &'a str, u32, &'a str)>),
+    RowGap,
+    EventGap,
+}
+
+impl TimerLine<'_> {
+    fn height(&self) -> f32 {
+        match self {
+            TimerLine::EventName(_) => TIMER_EVENT_LINE_H,
+            TimerLine::Divider => TIMER_DIVIDER_LINE_H,
+            TimerLine::Row(..) => TIMER_ROW_H,
+            TimerLine::RowGap => TIMER_ROW_GAP_H,
+            TimerLine::EventGap => TIMER_EVENT_GAP_H,
+        }
+    }
+}
+
+// Packs a lane's events into physical pages: a page break happens right
+// before a row that would overflow the page height, or (if given) once the
+// page already holds `heats_per_page` rows — whichever comes first. Breaks
+// only ever fall between rows, never mid-row. If a break lands in the
+// middle of an event, the event's name and divider are repeated at the top
+// of the next page, exactly as if that row were the event's first.
+fn pack_timer_pages(events: &[TimerEvent], heats_per_page: Option<u32>) -> Vec<Vec<TimerLine<'_>>> {
+    let mut pages: Vec<Vec<TimerLine<'_>>> = Vec::new();
+    let mut current: Vec<TimerLine<'_>> = Vec::new();
+    let mut used = 0.0f32;
+    let mut heats_used = 0usize;
+
+    for event in events {
+        let mut need_header = true;
+        let last = event.rows.len().saturating_sub(1);
+        for (index, row) in event.rows.iter().enumerate() {
+            let header_h = if need_header {
+                TIMER_EVENT_LINE_H + TIMER_DIVIDER_LINE_H
+            } else {
+                0.0
+            };
+            let over_height = used + header_h + TIMER_ROW_H > COLUMN_HEIGHT;
+            let over_count = heats_per_page.is_some_and(|max| heats_used + 1 > max as usize);
+            if (over_height || over_count) && !current.is_empty() {
+                pages.push(std::mem::take(&mut current));
+                used = 0.0;
+                heats_used = 0;
+                need_header = true;
+            }
+
+            if need_header {
+                current.push(TimerLine::EventName(&event.event_name));
+                current.push(TimerLine::Divider);
+                used += TIMER_EVENT_LINE_H + TIMER_DIVIDER_LINE_H;
+                need_header = false;
+            }
+
+            current.push(TimerLine::Row(
+                &row.heat_label,
+                row.swimmer.as_ref().map(|s| {
+                    (
+                        s.last_name.as_str(),
+                        s.first_name.as_str(),
+                        s.age,
+                        s.team.as_str(),
+                    )
+                }),
+            ));
+            used += TIMER_ROW_H;
+            heats_used += 1;
+
+            let gap = if index == last {
+                TimerLine::EventGap
+            } else {
+                TimerLine::RowGap
+            };
+            used += gap.height();
+            current.push(gap);
+        }
+    }
+    if !current.is_empty() {
+        pages.push(current);
+    }
+    pages
+}
+
+fn emit_timer_page(ops: &mut Vec<Op>, lane: u32, lines: &[TimerLine<'_>]) {
+    let blank_width =
+        (TIMER_CONTENT_WIDTH - TIMER_BLANKS_X - (TIMER_BLANK_COUNT as f32 - 1.0) * TIMER_BLANK_GAP)
+            / TIMER_BLANK_COUNT as f32;
+
+    let mut y = CONTENT_TOP;
+    for line in lines {
+        match line {
+            TimerLine::EventName(name) => {
+                show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, MARGIN, y, name);
+            }
+            TimerLine::Divider => {
+                draw_hline(ops, MARGIN, PAGE_W - MARGIN, y, 0.5, rgb(0.5, 0.5, 0.5));
+            }
+            TimerLine::Row(heat_label, swimmer) => {
+                show_text_at(
+                    ops,
+                    BuiltinFont::Helvetica,
+                    7.0,
+                    MARGIN + TIMER_LANE_X,
+                    y,
+                    &format!("Lane {lane}"),
+                );
+                show_text_at(
+                    ops,
+                    BuiltinFont::Helvetica,
+                    7.0,
+                    MARGIN + TIMER_HEAT_X,
+                    y,
+                    heat_label,
+                );
+                match swimmer {
+                    Some((last, first, age, team)) => {
+                        show_text_at(
+                            ops,
+                            BuiltinFont::Helvetica,
+                            7.0,
+                            MARGIN + TIMER_NAME_X,
+                            y,
+                            &format!("{last}, {first} ({age})"),
+                        );
+                        show_text_at(
+                            ops,
+                            BuiltinFont::Helvetica,
+                            7.0,
+                            MARGIN + TIMER_TEAM_X,
+                            y,
+                            team,
+                        );
+                    }
+                    None => {
+                        show_text_at(
+                            ops,
+                            BuiltinFont::HelveticaOblique,
+                            7.0,
+                            MARGIN + TIMER_NAME_X,
+                            y,
+                            "No swimmer",
+                        );
+                    }
+                }
+
+                for i in 0..TIMER_BLANK_COUNT {
+                    let x_start =
+                        MARGIN + TIMER_BLANKS_X + i as f32 * (blank_width + TIMER_BLANK_GAP);
+                    draw_hline(
+                        ops,
+                        x_start,
+                        x_start + blank_width,
+                        y - 0.5,
+                        0.5,
+                        rgb(0.0, 0.0, 0.0),
+                    );
+                }
+            }
+            TimerLine::RowGap | TimerLine::EventGap => {}
+        }
+        y -= line.height();
+    }
+}
+
+pub fn write_timer_pdf(
+    meet_title: &str,
+    pages: &[TimerPage],
+    heats_per_page: Option<u32>,
+    path: &Path,
+) -> Result<(), String> {
+    // Each lane packs independently so a lane always starts a fresh page,
+    // even if the previous lane's last page had room to spare.
+    let per_lane: Vec<(u32, Vec<Vec<TimerLine<'_>>>)> = pages
+        .iter()
+        .map(|page| (page.lane, pack_timer_pages(&page.events, heats_per_page)))
+        .collect();
+
+    let total_pages: usize = per_lane
+        .iter()
+        .map(|(_, lane_pages)| lane_pages.len().max(1))
+        .sum();
+
+    let mut doc = PdfDocument::new(meet_title);
+    let mut pdf_pages = Vec::new();
+    let mut page_number = 1usize;
+    for (lane, lane_pages) in &per_lane {
+        if lane_pages.is_empty() {
+            let mut ops = Vec::new();
+            emit_header(
+                &mut ops,
+                "Timer Sheets",
+                meet_title,
+                page_number,
+                total_pages,
+            );
+            show_text_at(
+                &mut ops,
+                BuiltinFont::Helvetica,
+                8.0,
+                MARGIN,
+                CONTENT_TOP,
+                &format!("Lane {lane}: no events"),
+            );
+            pdf_pages.push(PdfPage::new(Mm(PAGE_W), Mm(PAGE_H), ops));
+            page_number += 1;
+            continue;
+        }
+        for lines in lane_pages {
+            let mut ops = Vec::new();
+            emit_header(
+                &mut ops,
+                "Timer Sheets",
+                meet_title,
+                page_number,
+                total_pages,
+            );
+            emit_timer_page(&mut ops, *lane, lines);
+            pdf_pages.push(PdfPage::new(Mm(PAGE_W), Mm(PAGE_H), ops));
+            page_number += 1;
+        }
+    }
+    doc.with_pages(pdf_pages);
+
+    let mut warnings: Vec<PdfWarnMsg> = Vec::new();
+    let bytes = doc.save(&PdfSaveOptions::default(), &mut warnings);
+    std::fs::write(path, bytes).map_err(|e| e.to_string())
 }
 
 enum PrintLine<'a> {
@@ -385,7 +698,14 @@ fn rounded_rect_line(x: f32, y: f32, width: f32, height: f32, radius: f32) -> Li
 }
 
 fn draw_exh_badge(ops: &mut Vec<Op>, x: f32, y: f32) {
-    show_text_at(ops, BuiltinFont::HelveticaBold, 4.5, x + 0.9, y + 0.3, "EXH");
+    show_text_at(
+        ops,
+        BuiltinFont::HelveticaBold,
+        4.5,
+        x + 0.9,
+        y + 0.3,
+        "EXH",
+    );
     ops.push(Op::SetOutlineColor {
         col: rgb(0.35, 0.35, 0.35),
     });
@@ -395,14 +715,20 @@ fn draw_exh_badge(ops: &mut Vec<Op>, x: f32, y: f32) {
     });
 }
 
-fn emit_header(ops: &mut Vec<Op>, meet_title: &str, page: usize, total_pages: usize) {
+fn emit_header(
+    ops: &mut Vec<Op>,
+    left_label: &str,
+    meet_title: &str,
+    page: usize,
+    total_pages: usize,
+) {
     show_text_at(
         ops,
         BuiltinFont::HelveticaBold,
         11.0,
         MARGIN,
         HEADER_TEXT_Y,
-        "Heat Sheet",
+        left_label,
     );
     show_text_at(
         ops,
@@ -439,14 +765,7 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
                 show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, col_x, y, name);
             }
             PrintLine::Divider => {
-                draw_hline(
-                    ops,
-                    col_x,
-                    col_x + COL_WIDTH,
-                    y,
-                    0.5,
-                    rgb(0.5, 0.5, 0.5),
-                );
+                draw_hline(ops, col_x, col_x + COL_WIDTH, y, 0.5, rgb(0.5, 0.5, 0.5));
             }
             PrintLine::HeatLabel(label) => {
                 show_text_at(ops, BuiltinFont::HelveticaOblique, 7.0, col_x, y, label);
@@ -505,7 +824,14 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
                     rest_y,
                     &age.to_string(),
                 );
-                show_text_at(ops, BuiltinFont::Helvetica, 7.0, col_x + TEAM_X, rest_y, team);
+                show_text_at(
+                    ops,
+                    BuiltinFont::Helvetica,
+                    7.0,
+                    col_x + TEAM_X,
+                    rest_y,
+                    team,
+                );
                 draw_hline(
                     ops,
                     col_x + TIME_X,
@@ -535,7 +861,13 @@ pub fn write_pdf(meet_title: &str, events: &[PrintEvent], path: &Path) -> Result
     let mut pdf_pages = Vec::new();
     for (page_index, page_columns) in pages.iter().enumerate() {
         let mut ops = Vec::new();
-        emit_header(&mut ops, meet_title, page_index + 1, total_pages);
+        emit_header(
+            &mut ops,
+            "Heat Sheet",
+            meet_title,
+            page_index + 1,
+            total_pages,
+        );
         for (col_index, column_lines) in page_columns.iter().enumerate() {
             let col_x = MARGIN + col_index as f32 * (COL_WIDTH + GUTTER);
             emit_column(&mut ops, column_lines, col_x);
@@ -614,7 +946,10 @@ mod tests {
     #[test]
     fn rotate_events_beyond_max_is_a_no_op() {
         let events = vec![event(1, vec![]), event(2, vec![])];
-        let rotated: Vec<u32> = rotate_events(&events, 99).iter().map(|e| e.number).collect();
+        let rotated: Vec<u32> = rotate_events(&events, 99)
+            .iter()
+            .map(|e| e.number)
+            .collect();
         assert_eq!(rotated, vec![1, 2]);
     }
 
@@ -637,7 +972,10 @@ mod tests {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![event(1, vec![heat(1, 2), heat(2, 2)]), event(2, vec![heat(1, 1)])],
+            events: vec![
+                event(1, vec![heat(1, 2), heat(2, 2)]),
+                event(2, vec![heat(1, 1)]),
+            ],
         };
         let mut consumed = HashSet::new();
         consumed.insert((1, 1));
@@ -695,10 +1033,7 @@ mod tests {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![
-                event(1, vec![heat(2, 3)]),
-                event(5, vec![heat(1, 4)]),
-            ],
+            events: vec![event(1, vec![heat(2, 3)]), event(5, vec![heat(1, 4)])],
         };
         // Sources given out of event-number order on purpose.
         let sources = vec![
@@ -719,10 +1054,7 @@ mod tests {
                 age_group: "10-11".to_string(),
             },
         ];
-        assert_eq!(
-            mixed_heat_label(&meet, &sources),
-            "Heats 2 of 3 and 1 of 4"
-        );
+        assert_eq!(mixed_heat_label(&meet, &sources), "Heats 2 of 3 and 1 of 4");
     }
 
     #[test]
@@ -817,7 +1149,10 @@ mod tests {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![event(1, vec![heat_with_lanes(1, 2, 60), heat_with_lanes(2, 2, 2)])],
+            events: vec![event(
+                1,
+                vec![heat_with_lanes(1, 2, 60), heat_with_lanes(2, 2, 2)],
+            )],
         };
         let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
         let chunks = build_chunks(&events);
@@ -832,6 +1167,141 @@ mod tests {
                 .count();
             assert!(heat2_lines <= 1);
         }
+    }
+
+    #[test]
+    fn build_timer_pages_lists_every_event_and_marks_empty_lanes() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![
+                event(1, vec![heat_with_lanes(1, 1, 2)]),
+                event(2, vec![heat_with_lanes(1, 1, 1)]),
+            ],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let pages = build_timer_pages(&events, 2);
+
+        // Lane 1 swims in both events; lane 2 only swims in event 1, but
+        // event 2 still appears on lane 2's page with a "no swimmer" row.
+        let lane1 = pages.iter().find(|p| p.lane == 1).unwrap();
+        assert_eq!(lane1.events.len(), 2);
+        assert!(lane1.events[0].rows[0].swimmer.is_some());
+
+        let lane2 = pages.iter().find(|p| p.lane == 2).unwrap();
+        assert_eq!(lane2.events.len(), 2);
+        assert!(lane2.events[0].rows[0].swimmer.is_some());
+        assert!(lane2.events[1].rows[0].swimmer.is_none());
+    }
+
+    #[test]
+    fn build_timer_pages_carries_heat_label_and_swimmer_details() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event(
+                1,
+                vec![heat_with_lanes(1, 2, 1), heat_with_lanes(2, 2, 1)],
+            )],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let pages = build_timer_pages(&events, 1);
+
+        let lane1 = &pages[0];
+        assert_eq!(lane1.events[0].rows.len(), 2);
+        assert_eq!(lane1.events[0].rows[0].heat_label, "Heat 1 of 2");
+        let swimmer = lane1.events[0].rows[0].swimmer.as_ref().unwrap();
+        assert_eq!(swimmer.last_name, "Doe");
+        assert_eq!(swimmer.team, "TST");
+    }
+
+    #[test]
+    fn pack_timer_pages_caps_heats_per_page() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event(
+                1,
+                vec![
+                    heat_with_lanes(1, 3, 1),
+                    heat_with_lanes(2, 3, 1),
+                    heat_with_lanes(3, 3, 1),
+                ],
+            )],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let pages = build_timer_pages(&events, 1);
+
+        let packed = pack_timer_pages(&pages[0].events, Some(2));
+        assert_eq!(packed.len(), 2);
+        let count = |lines: &[TimerLine<'_>]| {
+            lines
+                .iter()
+                .filter(|l| matches!(l, TimerLine::Row(..)))
+                .count()
+        };
+        assert_eq!(count(&packed[0]), 2);
+        assert_eq!(count(&packed[1]), 1);
+    }
+
+    #[test]
+    fn pack_timer_pages_repeats_event_header_after_a_break_mid_event() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event(
+                1,
+                vec![
+                    heat_with_lanes(1, 3, 1),
+                    heat_with_lanes(2, 3, 1),
+                    heat_with_lanes(3, 3, 1),
+                ],
+            )],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let pages = build_timer_pages(&events, 1);
+
+        let packed = pack_timer_pages(&pages[0].events, Some(2));
+        assert_eq!(packed.len(), 2);
+        assert!(matches!(packed[0][0], TimerLine::EventName(_)));
+        assert!(matches!(packed[0][1], TimerLine::Divider));
+        // The continuation page repeats the header before its remaining row.
+        assert!(matches!(packed[1][0], TimerLine::EventName(_)));
+        assert!(matches!(packed[1][1], TimerLine::Divider));
+        assert!(matches!(packed[1][2], TimerLine::Row(..)));
+    }
+
+    #[test]
+    fn write_timer_pdf_produces_a_valid_pdf_file() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("meetmerger_timer_export_test.pdf");
+        let pages = vec![
+            TimerPage {
+                lane: 1,
+                events: vec![TimerEvent {
+                    event_name: "#1 Boys 10-11 25m Freestyle".to_string(),
+                    rows: vec![TimerRow {
+                        heat_label: "Heat 1 of 1".to_string(),
+                        swimmer: Some(TimerSwimmer {
+                            last_name: "Doe".to_string(),
+                            first_name: "Jane".to_string(),
+                            age: 10,
+                            team: "TST".to_string(),
+                        }),
+                    }],
+                }],
+            },
+            TimerPage {
+                lane: 2,
+                events: vec![],
+            },
+        ];
+        write_timer_pdf("Test Meet", &pages, None, &path).expect("write_timer_pdf should succeed");
+
+        let bytes = std::fs::read(&path).expect("file should exist");
+        assert!(bytes.starts_with(b"%PDF-"));
+        assert!(bytes.len() > 100);
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]
@@ -907,7 +1377,11 @@ mod tests {
         );
 
         let max_event = meet.events.iter().map(|e| e.number).max().unwrap_or(1);
-        let rotated_events = build_print_events(&meet, &HashSet::new(), &[], &abbreviations, max_event);
-        assert_eq!(rotated_events[0].event_name, events.last().unwrap().event_name);
+        let rotated_events =
+            build_print_events(&meet, &HashSet::new(), &[], &abbreviations, max_event);
+        assert_eq!(
+            rotated_events[0].event_name,
+            events.last().unwrap().event_name
+        );
     }
 }
