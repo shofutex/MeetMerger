@@ -258,7 +258,7 @@ fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Mess
 
     let actions = row![
         button("Back").on_press(Message::BackToSelectHeats),
-        button("Export PDF...").on_press(Message::GoToTeamAbbreviations),
+        button("Export PDFs").on_press(Message::GoToTeamAbbreviations),
     ]
     .spacing(12);
     (col.into(), actions.into())
@@ -331,9 +331,9 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
     }
 
     let export_button = if state.is_exporting {
-        button("Export PDF")
+        button("Export Heat Sheet")
     } else {
-        button("Export PDF").on_press(Message::ExportPdf)
+        button("Export Heat Sheet").on_press(Message::ExportPdf)
     };
     let timer_button = if state.is_exporting_timers {
         button("Export Timer Sheets")

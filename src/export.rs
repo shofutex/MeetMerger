@@ -656,6 +656,26 @@ fn draw_hline(ops: &mut Vec<Op>, x_start: f32, x_end: f32, y: f32, thickness: f3
     });
 }
 
+fn draw_vline(ops: &mut Vec<Op>, x: f32, y_start: f32, y_end: f32, thickness: f32, color: Color) {
+    ops.push(Op::SetOutlineColor { col: color });
+    ops.push(Op::SetOutlineThickness { pt: Pt(thickness) });
+    ops.push(Op::DrawLine {
+        line: Line {
+            points: vec![
+                LinePoint {
+                    p: Point::new(Mm(x), Mm(y_start)),
+                    bezier: false,
+                },
+                LinePoint {
+                    p: Point::new(Mm(x), Mm(y_end)),
+                    bezier: false,
+                },
+            ],
+            is_closed: false,
+        },
+    });
+}
+
 // printpdf's Rect has no corner-radius option, so a rounded outline has to
 // be hand-built as a path: straight edges plus four cubic-bezier corners,
 // using the standard kappa constant to approximate a quarter-circle arc.
@@ -871,6 +891,18 @@ pub fn write_pdf(meet_title: &str, events: &[PrintEvent], path: &Path) -> Result
         for (col_index, column_lines) in page_columns.iter().enumerate() {
             let col_x = MARGIN + col_index as f32 * (COL_WIDTH + GUTTER);
             emit_column(&mut ops, column_lines, col_x);
+        }
+        for col_index in 0..COLUMNS - 1 {
+            let divider_x =
+                MARGIN + col_index as f32 * (COL_WIDTH + GUTTER) + COL_WIDTH + GUTTER / 2.0;
+            draw_vline(
+                &mut ops,
+                divider_x,
+                CONTENT_TOP,
+                MARGIN,
+                0.3,
+                rgb(0.7, 0.7, 0.7),
+            );
         }
         pdf_pages.push(PdfPage::new(Mm(PAGE_W), Mm(PAGE_H), ops));
     }
