@@ -1,5 +1,5 @@
-use iced::widget::{button, checkbox, column, container, row, scrollable, text, text_input};
-use iced::{Element, Length};
+use iced::widget::{button, checkbox, column, container, row, rule, scrollable, text, text_input};
+use iced::{Color, Element, Length};
 
 use meetmerger::export;
 use meetmerger::merge::{self, MixedHeat};
@@ -29,6 +29,10 @@ pub fn view(state: &Wizard) -> Element<'_, Message> {
     .padding(16)
     .into()
 }
+
+const COLOR_ERROR: Color = Color::from_rgb(0.75, 0.15, 0.15);
+const COLOR_SUCCESS: Color = Color::from_rgb(0.16, 0.5, 0.2);
+const COLOR_WARNING: Color = Color::from_rgb(0.7, 0.45, 0.0);
 
 fn lane_line(lane: &Lane) -> String {
     match &lane.swimmer {
@@ -84,13 +88,14 @@ fn view_load(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
     }
 
     if let Some(err) = &state.load_error {
-        col = col.push(text(format!("Error: {err}")));
+        col = col.push(text(format!("Error: {err}")).color(COLOR_ERROR));
     }
 
     if !state.issues.is_empty() {
-        col = col.push(text(format!("{} issue(s) found:", state.issues.len())));
+        col =
+            col.push(text(format!("{} issue(s) found:", state.issues.len())).color(COLOR_WARNING));
         for issue in &state.issues {
-            col = col.push(text(issue.to_string()));
+            col = col.push(text(issue.to_string()).color(COLOR_WARNING));
         }
     }
 
@@ -115,16 +120,18 @@ fn view_review(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
         );
     };
 
-    let mut col = column![text(format!("{} — {}", meet.title, meet.date)).size(24)].spacing(8);
+    let mut col = column![text(format!("{} — {}", meet.title, meet.date)).size(24)].spacing(14);
 
     for event in &meet.events {
-        col = col.push(text(event_header(event)).size(18));
+        let mut event_col = column![text(event_header(event)).size(18)].spacing(4);
         for heat in &event.heats {
-            col = col.push(text(format!("  {}", heat_header(heat))));
+            event_col = event_col.push(text(format!("  {}", heat_header(heat))));
             for lane in &heat.lanes {
-                col = col.push(text(format!("    {}", lane_line(lane))));
+                event_col = event_col.push(text(format!("    {}", lane_line(lane))));
             }
         }
+        col = col.push(event_col);
+        col = col.push(rule::horizontal(1));
     }
 
     let actions = row![button("Continue to merge").on_press(Message::GoToSelectHeats)].spacing(12);
@@ -139,12 +146,12 @@ fn view_select_heats(state: &Wizard) -> (Element<'_, Message>, Element<'_, Messa
         );
     };
 
-    let mut col = column![text(format!("Pool lane capacity: {}", state.lane_capacity))].spacing(6);
+    let mut col = column![text(format!("Pool lane capacity: {}", state.lane_capacity))].spacing(12);
     let mut selected_count = 0usize;
     let mut selected_heats: Vec<&Heat> = Vec::new();
 
     for event in &meet.events {
-        col = col.push(text(event_header(event)).size(16));
+        let mut event_col = column![text(event_header(event)).size(16)].spacing(4);
         for heat in &event.heats {
             let key = (event.number, heat.number);
             let swimmer_count = merge::heat_swimmer_count(heat);
@@ -170,8 +177,10 @@ fn view_select_heats(state: &Wizard) -> (Element<'_, Message>, Element<'_, Messa
             } else {
                 text(format!("{label} — full")).into()
             };
-            col = col.push(row_el);
+            event_col = event_col.push(row_el);
         }
+        col = col.push(event_col);
+        col = col.push(rule::horizontal(1));
     }
 
     col = col.push(text(format!(
@@ -230,7 +239,7 @@ fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Mess
         );
     };
 
-    let mut col = column![text("Final preview").size(24)].spacing(8);
+    let mut col = column![text("Final preview").size(24)].spacing(14);
 
     for event in &meet.events {
         let remaining: Vec<&Heat> = event
@@ -238,12 +247,17 @@ fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Mess
             .iter()
             .filter(|h| !state.consumed.contains(&(event.number, h.number)))
             .collect();
+
+        let mut event_col = column![].spacing(4);
+        let mut has_content = false;
+
         if !remaining.is_empty() {
-            col = col.push(text(event_header(event)).size(16));
+            has_content = true;
+            event_col = event_col.push(text(event_header(event)).size(16));
             for heat in remaining {
-                col = col.push(text(format!("  {}", heat_header(heat))));
+                event_col = event_col.push(text(format!("  {}", heat_header(heat))));
                 for lane in &heat.lanes {
-                    col = col.push(text(format!("    {}", lane_line(lane))));
+                    event_col = event_col.push(text(format!("    {}", lane_line(lane))));
                 }
             }
         }
@@ -251,8 +265,14 @@ fn view_final_preview(state: &Wizard) -> (Element<'_, Message>, Element<'_, Mess
         // Mixed heats appear right after the earliest event they draw from.
         for (index, mixed) in state.mixed_heats.iter().enumerate() {
             if mixed.anchor_event() == event.number {
-                col = col.push(mixed_heat_view(index, mixed));
+                has_content = true;
+                event_col = event_col.push(mixed_heat_view(index, mixed));
             }
+        }
+
+        if has_content {
+            col = col.push(event_col);
+            col = col.push(rule::horizontal(1));
         }
     }
 
@@ -315,8 +335,14 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
     }
     if let Some(result) = &state.export_result {
         match result {
-            Ok(path) => col = col.push(text(format!("Heat sheet saved to {}", path.display()))),
-            Err(err) => col = col.push(text(format!("Heat sheet export failed: {err}"))),
+            Ok(path) => {
+                col = col.push(
+                    text(format!("Heat sheet saved to {}", path.display())).color(COLOR_SUCCESS),
+                )
+            }
+            Err(err) => {
+                col = col.push(text(format!("Heat sheet export failed: {err}")).color(COLOR_ERROR))
+            }
         }
     }
 
@@ -325,8 +351,15 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
     }
     if let Some(result) = &state.timer_export_result {
         match result {
-            Ok(path) => col = col.push(text(format!("Timer sheets saved to {}", path.display()))),
-            Err(err) => col = col.push(text(format!("Timer sheets export failed: {err}"))),
+            Ok(path) => {
+                col = col.push(
+                    text(format!("Timer sheets saved to {}", path.display())).color(COLOR_SUCCESS),
+                )
+            }
+            Err(err) => {
+                col =
+                    col.push(text(format!("Timer sheets export failed: {err}")).color(COLOR_ERROR))
+            }
         }
     }
 

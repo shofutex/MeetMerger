@@ -36,9 +36,14 @@ fn boot(cli: &Cli) -> (Wizard, Task<Message>) {
     (wizard, Task::done(Message::LoadMeet))
 }
 
+fn theme(_state: &Wizard) -> iced::Theme {
+    iced::Theme::CatppuccinLatte
+}
+
 fn main() -> iced::Result {
     let cli = Cli::parse();
     iced::application(move || boot(&cli), update, view)
         .title("MeetMerger")
+        .theme(theme)
         .run()
 }
