@@ -29,9 +29,10 @@ pub struct Wizard {
     // (event_number, heat_number) already folded into a mixed heat
     pub consumed: HashSet<(u32, u32)>,
     pub mixed_heats: Vec<MixedHeat>,
-    // in-progress picks for the next mixed heat
+    // in-progress picks for the next mixed heat(s); a selection worth more
+    // than one heat's lane capacity splits into several pending heats here
     pub selection: HashSet<(u32, u32)>,
-    pub pending: Option<MixedHeat>,
+    pub pending: Vec<MixedHeat>,
 
     pub export_start_event: String,
     pub team_abbreviations: HashMap<String, String>,
@@ -57,7 +58,7 @@ pub enum Message {
 
     ToggleHeatSelected(u32, u32),
     ConfirmSelection,
-    HeaderEdited(String),
+    HeaderEdited(usize, String),
     ConfirmMixedHeat,
     CancelMixedHeat,
 

@@ -183,43 +183,56 @@ fn view_select_heats(state: &Wizard) -> (Element<'_, Message>, Element<'_, Messa
         col = col.push(rule::horizontal(1));
     }
 
-    col = col.push(text(format!(
-        "Selection total: {selected_count}/{}",
-        state.lane_capacity
-    )));
+    let heats_needed = selected_count.div_ceil(state.lane_capacity.max(1) as usize);
+    let totals_label = if heats_needed > 1 {
+        format!(
+            "Selected: {selected_count} swimmers — will split into {heats_needed} mixed heats of up to {}",
+            state.lane_capacity
+        )
+    } else {
+        format!("Selected: {selected_count}/{}", state.lane_capacity)
+    };
 
-    let can_merge = merge::can_merge(&selected_heats, state.lane_capacity);
+    let can_merge = merge::can_merge(&selected_heats);
+    // Shown outside the scrollable event list, so the running total stays
+    // visible while checking boxes further down a long list.
     let mut actions = row![].spacing(12);
     actions = actions.push(if can_merge {
-        button("Create mixed heat").on_press(Message::ConfirmSelection)
+        button("Create mixed heat(s)").on_press(Message::ConfirmSelection)
     } else {
-        button("Create mixed heat")
+        button("Create mixed heat(s)")
     });
     actions = actions.push(if !state.mixed_heats.is_empty() {
         button("Finish").on_press(Message::Finish)
     } else {
         button("Finish")
     });
+    actions = actions.push(text(totals_label));
 
     (col.into(), actions.into())
 }
 
 fn view_mixed_heat_edit(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
-    let Some(pending) = &state.pending else {
+    if state.pending.is_empty() {
         return (
             text("No mixed heat in progress.").into(),
             row![].spacing(12).into(),
         );
-    };
+    }
 
-    let mut col = column![
-        text("Mixed heat header").size(18),
-        text_input("Mixed heat header", &pending.header).on_input(Message::HeaderEdited),
-    ]
-    .spacing(8);
+    let mut col = column![text("Mixed heat header(s)").size(18)].spacing(14);
 
-    for lane in &pending.lanes {
-        col = col.push(text(lane_line(lane)));
+    for (index, pending) in state.pending.iter().enumerate() {
+        let mut heat_col = column![
+            text_input("Mixed heat header", &pending.header)
+                .on_input(move |header| Message::HeaderEdited(index, header)),
+        ]
+        .spacing(2);
+        for lane in &pending.lanes {
+            heat_col = heat_col.push(text(lane_line(lane)));
+        }
+        col = col.push(heat_col);
+        col = col.push(rule::horizontal(1));
     }
 
     let actions = row![

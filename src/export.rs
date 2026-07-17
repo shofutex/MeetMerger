@@ -3,7 +3,7 @@ use std::path::Path;
 
 use printpdf::*;
 
-use crate::merge::{MixedHeat, MixedHeatSource};
+use crate::merge::MixedHeat;
 use crate::model::{Event, Lane, Meet};
 
 // US Letter portrait, in millimeters.
@@ -57,6 +57,26 @@ fn name_wrap_threshold(exhibition: bool) -> usize {
         NAME_WRAP_THRESHOLD_EXH
     } else {
         NAME_WRAP_THRESHOLD_OTHER
+    }
+}
+
+// Event names 48 characters or longer wrap onto a second line so they don't
+// run past the column/page width.
+const EVENT_NAME_WRAP_THRESHOLD: usize = 48;
+
+// Splits at the space nearest the midpoint. Falls back to no wrap if there's
+// no space to split on (e.g. a single very long word).
+fn wrap_event_name(name: &str) -> (&str, Option<&str>) {
+    if name.len() < EVENT_NAME_WRAP_THRESHOLD {
+        return (name, None);
+    }
+    let mid = name.len() / 2;
+    let split = name[..mid]
+        .rfind(' ')
+        .or_else(|| name[mid..].find(' ').map(|i| mid + i));
+    match split {
+        Some(idx) => (name[..idx].trim_end(), Some(name[idx..].trim_start())),
+        None => (name, None),
     }
 }
 
@@ -146,30 +166,6 @@ fn event_name(event: &Event) -> String {
     )
 }
 
-// "Heats 1 of 2 and 1 of 1" — each source's original heat number/total,
-// ordered by event number rather than merge order.
-fn mixed_heat_label(meet: &Meet, sources: &[MixedHeatSource]) -> String {
-    let mut sorted: Vec<&MixedHeatSource> = sources.iter().collect();
-    sorted.sort_by_key(|s| s.event_number);
-
-    let parts: Vec<String> = sorted
-        .iter()
-        .filter_map(|s| {
-            meet.events
-                .iter()
-                .find(|e| e.number == s.event_number)
-                .and_then(|e| e.heats.iter().find(|h| h.number == s.heat_number))
-                .map(|h| format!("{} of {}", h.number, h.of))
-        })
-        .collect();
-
-    let joined = match parts.split_last() {
-        Some((last, rest)) if !rest.is_empty() => format!("{} and {}", rest.join(", "), last),
-        _ => parts.join(", "),
-    };
-    format!("Heats {joined}")
-}
-
 // Every distinct team name appearing in the printable result (remaining
 // original heats plus mixed heats), sorted, for the abbreviation picker.
 pub fn distinct_teams(
@@ -200,10 +196,26 @@ pub fn distinct_teams(
     teams.into_iter().collect()
 }
 
+// Splits a flat mixed_heats list back into the runs one merge produced: the
+// heats a single merge action creates are always pushed contiguously and in
+// heat_index order, so each run is just the next heat_count entries.
+fn mixed_heat_groups(mixed_heats: &[MixedHeat]) -> Vec<&[MixedHeat]> {
+    let mut groups = Vec::new();
+    let mut i = 0;
+    while i < mixed_heats.len() {
+        let end = (i + mixed_heats[i].heat_count.max(1)).min(mixed_heats.len());
+        groups.push(&mixed_heats[i..end]);
+        i = end;
+    }
+    groups
+}
+
 // Walks events in rotated print order; for each event, emits one PrintEvent
 // holding every remaining (non-consumed) heat, then interleaves any mixed
 // heats anchored to that event number, mirroring the GUI's Final Preview
-// ordering. Skips events left with no remaining heats.
+// ordering. A mixed heat's splits are treated like a normal event's heats:
+// one PrintEvent, its name shown once, holding every split underneath.
+// Skips events left with no remaining heats.
 pub fn build_print_events(
     meet: &Meet,
     consumed: &HashSet<(u32, u32)>,
@@ -211,6 +223,7 @@ pub fn build_print_events(
     abbreviations: &HashMap<String, String>,
     start_event: u32,
 ) -> Vec<PrintEvent> {
+    let mixed_groups = mixed_heat_groups(mixed_heats);
     let mut events = Vec::new();
     for event in rotate_events(&meet.events, start_event) {
         let heats: Vec<PrintHeat> = event
@@ -229,14 +242,21 @@ pub fn build_print_events(
             });
         }
 
-        for mixed in mixed_heats {
-            if mixed.anchor_event() == event.number {
-                events.push(PrintEvent {
-                    event_name: mixed.header.clone(),
-                    heats: vec![PrintHeat {
-                        heat_label: mixed_heat_label(meet, &mixed.sources),
+        for group in &mixed_groups {
+            let Some(first) = group.first() else {
+                continue;
+            };
+            if first.anchor_event() == event.number {
+                let heats: Vec<PrintHeat> = group
+                    .iter()
+                    .map(|mixed| PrintHeat {
+                        heat_label: format!("Heat {} of {}", mixed.heat_index, mixed.heat_count),
                         swimmers: swimmer_rows(&mixed.lanes, abbreviations),
-                    }],
+                    })
+                    .collect();
+                events.push(PrintEvent {
+                    event_name: first.header.clone(),
+                    heats,
                 });
             }
         }
@@ -309,7 +329,8 @@ pub fn build_timer_pages(events: &[PrintEvent], lane_capacity: u32) -> Vec<Timer
 }
 
 enum TimerLine<'a> {
-    EventName(&'a str),
+    // Second line present when the event name wraps.
+    EventName(&'a str, Option<&'a str>),
     Divider,
     Row(&'a str, Option<(&'a str, &'a str, u32, &'a str)>),
     RowGap,
@@ -319,7 +340,13 @@ enum TimerLine<'a> {
 impl TimerLine<'_> {
     fn height(&self) -> f32 {
         match self {
-            TimerLine::EventName(_) => TIMER_EVENT_LINE_H,
+            TimerLine::EventName(_, second) => {
+                if second.is_some() {
+                    TIMER_EVENT_LINE_H * 2.0
+                } else {
+                    TIMER_EVENT_LINE_H
+                }
+            }
             TimerLine::Divider => TIMER_DIVIDER_LINE_H,
             TimerLine::Row(..) => TIMER_ROW_H,
             TimerLine::RowGap => TIMER_ROW_GAP_H,
@@ -341,14 +368,18 @@ fn pack_timer_pages(events: &[TimerEvent], heats_per_page: Option<u32>) -> Vec<V
     let mut heats_used = 0usize;
 
     for event in events {
+        let (name_first, name_second) = wrap_event_name(&event.event_name);
+        let name_h = if name_second.is_some() {
+            TIMER_EVENT_LINE_H * 2.0
+        } else {
+            TIMER_EVENT_LINE_H
+        };
+        let full_header_h = name_h + TIMER_DIVIDER_LINE_H;
+
         let mut need_header = true;
         let last = event.rows.len().saturating_sub(1);
         for (index, row) in event.rows.iter().enumerate() {
-            let header_h = if need_header {
-                TIMER_EVENT_LINE_H + TIMER_DIVIDER_LINE_H
-            } else {
-                0.0
-            };
+            let header_h = if need_header { full_header_h } else { 0.0 };
             let over_height = used + header_h + TIMER_ROW_H > COLUMN_HEIGHT;
             let over_count = heats_per_page.is_some_and(|max| heats_used + 1 > max as usize);
             if (over_height || over_count) && !current.is_empty() {
@@ -359,9 +390,9 @@ fn pack_timer_pages(events: &[TimerEvent], heats_per_page: Option<u32>) -> Vec<V
             }
 
             if need_header {
-                current.push(TimerLine::EventName(&event.event_name));
+                current.push(TimerLine::EventName(name_first, name_second));
                 current.push(TimerLine::Divider);
-                used += TIMER_EVENT_LINE_H + TIMER_DIVIDER_LINE_H;
+                used += full_header_h;
                 need_header = false;
             }
 
@@ -402,8 +433,18 @@ fn emit_timer_page(ops: &mut Vec<Op>, lane: u32, lines: &[TimerLine<'_>]) {
     let mut y = CONTENT_TOP;
     for line in lines {
         match line {
-            TimerLine::EventName(name) => {
-                show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, MARGIN, y, name);
+            TimerLine::EventName(first_line, second_line) => {
+                show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, MARGIN, y, first_line);
+                if let Some(second_line) = second_line {
+                    show_text_at(
+                        ops,
+                        BuiltinFont::HelveticaBold,
+                        8.0,
+                        MARGIN,
+                        y - TIMER_EVENT_LINE_H,
+                        second_line,
+                    );
+                }
             }
             TimerLine::Divider => {
                 draw_hline(ops, MARGIN, PAGE_W - MARGIN, y, 0.5, rgb(0.5, 0.5, 0.5));
@@ -540,7 +581,8 @@ pub fn write_timer_pdf(
 }
 
 enum PrintLine<'a> {
-    EventName(&'a str),
+    // Second line present when the event name wraps.
+    EventName(&'a str, Option<&'a str>),
     Divider,
     HeatLabel(&'a str),
     // (lane, last_name, first_name, age, team, exhibition)
@@ -551,7 +593,13 @@ enum PrintLine<'a> {
 impl PrintLine<'_> {
     fn height(&self) -> f32 {
         match self {
-            PrintLine::EventName(_) => EVENT_LINE_H,
+            PrintLine::EventName(_, second) => {
+                if second.is_some() {
+                    EVENT_LINE_H * 2.0
+                } else {
+                    EVENT_LINE_H
+                }
+            }
             PrintLine::Divider => DIVIDER_LINE_H,
             PrintLine::HeatLabel(_) => HEAT_LABEL_LINE_H,
             PrintLine::Swimmer(_, last, first, _, _, exhibition) => {
@@ -586,7 +634,8 @@ fn build_chunks(events: &[PrintEvent]) -> Vec<Chunk<'_>> {
         for (index, heat) in event.heats.iter().enumerate() {
             let mut lines = Vec::new();
             if index == 0 {
-                lines.push(PrintLine::EventName(&event.event_name));
+                let (first, second) = wrap_event_name(&event.event_name);
+                lines.push(PrintLine::EventName(first, second));
                 lines.push(PrintLine::Divider);
             }
             lines.push(PrintLine::HeatLabel(&heat.heat_label));
@@ -792,8 +841,18 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
     let mut y = CONTENT_TOP;
     for line in lines {
         match line {
-            PrintLine::EventName(name) => {
-                show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, col_x, y, name);
+            PrintLine::EventName(first_line, second_line) => {
+                show_text_at(ops, BuiltinFont::HelveticaBold, 8.0, col_x, y, first_line);
+                if let Some(second_line) = second_line {
+                    show_text_at(
+                        ops,
+                        BuiltinFont::HelveticaBold,
+                        8.0,
+                        col_x,
+                        y - EVENT_LINE_H,
+                        second_line,
+                    );
+                }
             }
             PrintLine::Divider => {
                 draw_hline(ops, col_x, col_x + COL_WIDTH, y, 0.5, rgb(0.5, 0.5, 0.5));
@@ -927,6 +986,7 @@ pub fn write_pdf(meet_title: &str, events: &[PrintEvent], path: &Path) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::merge::MixedHeatSource;
     use crate::model::{Heat, SeedTime, Swimmer};
 
     fn event(number: u32, heats: Vec<Heat>) -> Event {
@@ -1063,41 +1123,60 @@ mod tests {
                 },
             ],
             lanes: vec![],
+            // heat_index/heat_count 2 of 3, so the heat_label assertion below
+            // distinguishes the split-based label from the old
+            // original-source-heat-based one.
+            heat_index: 2,
+            heat_count: 3,
         };
 
         let events = build_print_events(&meet, &consumed, &[mixed], &no_abbreviations(), 1);
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
-        assert_eq!(events[0].heats[0].heat_label, "Heats 1 of 1 and 1 of 1");
+        assert_eq!(events[0].heats[0].heat_label, "Heat 2 of 3");
+    }
+
+    fn mixed_source(event_number: u32, heat_number: u32) -> MixedHeatSource {
+        MixedHeatSource {
+            event_number,
+            heat_number,
+            gender: "Boys".to_string(),
+            distance_m: 25,
+            stroke: "Freestyle".to_string(),
+            age_group: "10-11".to_string(),
+        }
     }
 
     #[test]
-    fn mixed_heat_label_orders_by_event_number_regardless_of_source_order() {
+    fn build_print_events_groups_a_mixed_heats_splits_under_one_event() {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![event(1, vec![heat(2, 3)]), event(5, vec![heat(1, 4)])],
+            events: vec![event(1, vec![heat(1, 1)]), event(2, vec![heat(1, 1)])],
         };
-        // Sources given out of event-number order on purpose.
-        let sources = vec![
-            MixedHeatSource {
-                event_number: 5,
-                heat_number: 1,
-                gender: "Boys".to_string(),
-                distance_m: 25,
-                stroke: "Freestyle".to_string(),
-                age_group: "10-11".to_string(),
-            },
-            MixedHeatSource {
-                event_number: 1,
-                heat_number: 2,
-                gender: "Boys".to_string(),
-                distance_m: 25,
-                stroke: "Freestyle".to_string(),
-                age_group: "10-11".to_string(),
-            },
-        ];
-        assert_eq!(mixed_heat_label(&meet, &sources), "Heats 2 of 3 and 1 of 4");
+        let mut consumed = HashSet::new();
+        consumed.insert((1, 1));
+        consumed.insert((2, 1));
+
+        let sources = vec![mixed_source(1, 1), mixed_source(2, 1)];
+        let splits: Vec<MixedHeat> = (1..=3)
+            .map(|heat_index| MixedHeat {
+                header: "#1/2 25m Freestyle".to_string(),
+                sources: sources.clone(),
+                lanes: vec![],
+                heat_index,
+                heat_count: 3,
+            })
+            .collect();
+
+        let events = build_print_events(&meet, &consumed, &splits, &no_abbreviations(), 1);
+        // One event name, shown once, not repeated per split.
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
+        assert_eq!(events[0].heats.len(), 3);
+        assert_eq!(events[0].heats[0].heat_label, "Heat 1 of 3");
+        assert_eq!(events[0].heats[1].heat_label, "Heat 2 of 3");
+        assert_eq!(events[0].heats[2].heat_label, "Heat 3 of 3");
     }
 
     #[test]
@@ -1306,10 +1385,10 @@ mod tests {
 
         let packed = pack_timer_pages(&pages[0].events, Some(2));
         assert_eq!(packed.len(), 2);
-        assert!(matches!(packed[0][0], TimerLine::EventName(_)));
+        assert!(matches!(packed[0][0], TimerLine::EventName(..)));
         assert!(matches!(packed[0][1], TimerLine::Divider));
         // The continuation page repeats the header before its remaining row.
-        assert!(matches!(packed[1][0], TimerLine::EventName(_)));
+        assert!(matches!(packed[1][0], TimerLine::EventName(..)));
         assert!(matches!(packed[1][1], TimerLine::Divider));
         assert!(matches!(packed[1][2], TimerLine::Row(..)));
     }

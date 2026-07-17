@@ -66,14 +66,14 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::ConfirmSelection => confirm_selection(state),
-        Message::HeaderEdited(header) => {
-            if let Some(pending) = &mut state.pending {
+        Message::HeaderEdited(index, header) => {
+            if let Some(pending) = state.pending.get_mut(index) {
                 pending.header = header;
             }
             Task::none()
         }
         Message::ConfirmMixedHeat => {
-            if let Some(pending) = state.pending.take() {
+            for pending in state.pending.drain(..) {
                 for source in &pending.sources {
                     state
                         .consumed
@@ -86,7 +86,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::CancelMixedHeat => {
-            state.pending = None;
+            state.pending.clear();
             state.step = Step::SelectHeats;
             Task::none()
         }
@@ -231,11 +231,11 @@ fn confirm_selection(state: &mut Wizard) -> Task<Message> {
     }
 
     let heats: Vec<&Heat> = sources.iter().map(|(_, heat)| *heat).collect();
-    if !merge::can_merge(&heats, state.lane_capacity) {
+    if !merge::can_merge(&heats) {
         return Task::none();
     }
 
-    state.pending = Some(merge::build_mixed_heat(sources, state.lane_capacity));
+    state.pending = merge::build_mixed_heats(sources, state.lane_capacity);
     state.step = Step::MixedHeatEdit;
     Task::none()
 }

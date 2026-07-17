@@ -15,6 +15,10 @@ pub struct MixedHeat {
     pub header: String,
     pub sources: Vec<MixedHeatSource>,
     pub lanes: Vec<Lane>,
+    // This heat's position (1-based) and total count among the mixed heats
+    // produced by one merge action -- e.g. 2 and 3 for "Heat 2 of 3".
+    pub heat_index: usize,
+    pub heat_count: usize,
 }
 
 impl MixedHeat {
@@ -48,9 +52,10 @@ pub fn is_heat_eligible(heat: &Heat, capacity: u32) -> bool {
     heat_swimmer_count(heat) < capacity as usize
 }
 
-pub fn can_merge(heats: &[&Heat], capacity: u32) -> bool {
-    heats.len() >= 2
-        && heats.iter().map(|h| heat_swimmer_count(h)).sum::<usize>() <= capacity as usize
+// No upper bound on swimmer count: a selection worth several heats' capacity
+// gets split into that many mixed heats by build_mixed_heats.
+pub fn can_merge(heats: &[&Heat]) -> bool {
+    heats.len() >= 2 && heats.iter().map(|h| heat_swimmer_count(h)).sum::<usize>() > 0
 }
 
 /// Fastest-to-slowest lane order: right-of-center first, then alternating
@@ -139,7 +144,11 @@ fn seed_key(seed_time: SeedTime) -> f64 {
     }
 }
 
-pub fn build_mixed_heat(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -> MixedHeat {
+// A selection can be worth more than one heat's lane capacity; this splits
+// the combined swimmer pool into as many full mixed heats as it takes, with
+// any leftover that doesn't fill a whole heat forming the first (slowest)
+// one -- matching how meets seed heats when entries don't divide evenly.
+pub fn build_mixed_heats(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -> Vec<MixedHeat> {
     let header_sources: Vec<MixedHeatSource> = sources
         .iter()
         .map(|(s, _)| MixedHeatSource {
@@ -156,30 +165,67 @@ pub fn build_mixed_heat(sources: Vec<(MixedHeatSource, &Heat)>, capacity: u32) -
         .into_iter()
         .flat_map(|(_, heat)| heat.lanes.iter().filter_map(|l| l.swimmer.clone()))
         .collect();
+    // Slowest-to-fastest, so any partial group -- the leftover that doesn't
+    // divide evenly into full heats -- ends up first, leaving every later
+    // (faster) heat full.
     swimmers.sort_by(|a, b| {
-        seed_key(a.seed_time)
-            .partial_cmp(&seed_key(b.seed_time))
+        seed_key(b.seed_time)
+            .partial_cmp(&seed_key(a.seed_time))
             .unwrap()
     });
 
-    let ages: Vec<u32> = swimmers.iter().map(|s| s.age).collect();
-    let header = suggested_header(&header_sources, &ages);
-
-    let mut lanes: Vec<Lane> = swimmers
-        .into_iter()
-        .zip(center_out_lane_order(capacity))
-        .map(|(swimmer, number)| Lane {
-            number,
-            swimmer: Some(swimmer),
-        })
-        .collect();
-    lanes.sort_by_key(|l| l.number);
-
-    MixedHeat {
-        header,
-        sources: header_sources,
-        lanes,
+    let capacity = capacity.max(1) as usize;
+    let total = swimmers.len();
+    let remainder = total % capacity;
+    let mut groups: Vec<Vec<_>> = Vec::new();
+    let mut idx = 0;
+    if remainder > 0 {
+        groups.push(swimmers[..remainder].to_vec());
+        idx = remainder;
     }
+    while idx < total {
+        groups.push(swimmers[idx..idx + capacity].to_vec());
+        idx += capacity;
+    }
+
+    let heat_count = groups.len();
+    // One header for the whole merge (like a normal event's name), shared by
+    // every split heat underneath it -- not recomputed per split, so a merge
+    // that spans multiple ages doesn't grow a different name per heat.
+    let all_ages: Vec<u32> = groups.iter().flatten().map(|s| s.age).collect();
+    let header = suggested_header(&header_sources, &all_ages);
+
+    groups
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut group)| {
+            // Back to fastest-first within this heat, so center-out lane
+            // order seeds this heat's own fastest swimmers in the center.
+            group.sort_by(|a, b| {
+                seed_key(a.seed_time)
+                    .partial_cmp(&seed_key(b.seed_time))
+                    .unwrap()
+            });
+
+            let mut lanes: Vec<Lane> = group
+                .into_iter()
+                .zip(center_out_lane_order(capacity as u32))
+                .map(|(swimmer, number)| Lane {
+                    number,
+                    swimmer: Some(swimmer),
+                })
+                .collect();
+            lanes.sort_by_key(|l| l.number);
+
+            MixedHeat {
+                header: header.clone(),
+                sources: header_sources.clone(),
+                lanes,
+                heat_index: i + 1,
+                heat_count,
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -284,6 +330,8 @@ mod tests {
             header: String::new(),
             sources: vec![source(5, 1, "Boys"), source(2, 1, "Boys")],
             lanes: Vec::new(),
+            heat_index: 1,
+            heat_count: 1,
         };
         assert_eq!(mixed.anchor_event(), 2);
     }
@@ -300,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn build_mixed_heat_seeds_fastest_in_center_and_no_time_outermost() {
+    fn build_mixed_heats_seeds_fastest_in_center_and_no_time_outermost() {
         let heat_a = Heat {
             number: 1,
             of: 1,
@@ -334,12 +382,13 @@ mod tests {
             (source(2, 1, "Boys"), &heat_b),
         ];
 
-        let mixed = build_mixed_heat(sources, 6);
+        let mixed = build_mixed_heats(sources, 6);
 
-        assert_eq!(mixed.lanes.len(), 4);
+        assert_eq!(mixed.len(), 1);
+        let heat = &mixed[0];
+        assert_eq!(heat.lanes.len(), 4);
         let by_lane = |n: u32| {
-            mixed
-                .lanes
+            heat.lanes
                 .iter()
                 .find(|l| l.number == n)
                 .and_then(|l| l.swimmer.as_ref())
@@ -349,5 +398,86 @@ mod tests {
         assert_eq!(by_lane(3), Some("Middle"));
         assert_eq!(by_lane(5), Some("Slow"));
         assert_eq!(by_lane(2), Some("NoTime"));
+    }
+
+    fn swimmer_with_last(last: &str, seed_time: SeedTime) -> Swimmer {
+        Swimmer {
+            last_name: last.to_string(),
+            first_name: "Test".to_string(),
+            age: 10,
+            exhibition: false,
+            team: "TST".to_string(),
+            seed_time,
+        }
+    }
+
+    fn heat_of(number: u32, of: u32, names: &[(&str, f64)]) -> Heat {
+        Heat {
+            number,
+            of,
+            lanes: names
+                .iter()
+                .enumerate()
+                .map(|(i, (name, secs))| Lane {
+                    number: i as u32 + 1,
+                    swimmer: Some(swimmer_with_last(name, SeedTime::Seconds(*secs))),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn build_mixed_heats_splits_an_over_capacity_selection() {
+        // 9 swimmers into a 4-lane pool: 1 full heat of 4 (fastest) plus a
+        // partial first heat of 1 (the slowest leftover).
+        let heat_a = heat_of(1, 1, &[("A1", 10.0), ("A2", 20.0), ("A3", 30.0), ("A4", 40.0)]);
+        let heat_b = heat_of(1, 1, &[("B1", 15.0), ("B2", 25.0), ("B3", 35.0), ("B4", 45.0)]);
+        let heat_c = heat_of(1, 1, &[("C1", 90.0)]);
+        let sources = vec![
+            (source(1, 1, "Boys"), &heat_a),
+            (source(1, 2, "Boys"), &heat_b),
+            (source(1, 3, "Boys"), &heat_c),
+        ];
+
+        let mixed = build_mixed_heats(sources, 4);
+
+        assert_eq!(mixed.len(), 3);
+        assert_eq!(mixed[0].lanes.len(), 1);
+        assert_eq!(
+            mixed[0].lanes[0].swimmer.as_ref().unwrap().last_name,
+            "C1"
+        );
+        assert_eq!((mixed[0].heat_index, mixed[0].heat_count), (1, 3));
+        // Header carries no heat-numbering language -- that's shown separately.
+        assert!(!mixed[0].header.contains("Heat"));
+
+        assert_eq!(mixed[1].lanes.len(), 4);
+        assert_eq!((mixed[1].heat_index, mixed[1].heat_count), (2, 3));
+
+        assert_eq!(mixed[2].lanes.len(), 4);
+        assert_eq!((mixed[2].heat_index, mixed[2].heat_count), (3, 3));
+        let fastest_lane = mixed[2]
+            .lanes
+            .iter()
+            .find(|l| l.number == 3)
+            .and_then(|l| l.swimmer.as_ref())
+            .unwrap();
+        assert_eq!(fastest_lane.last_name, "A1");
+    }
+
+    #[test]
+    fn build_mixed_heats_exact_multiple_has_no_partial_heat() {
+        let heat_a = heat_of(1, 1, &[("A1", 10.0), ("A2", 20.0)]);
+        let heat_b = heat_of(1, 1, &[("B1", 15.0), ("B2", 25.0)]);
+        let sources = vec![
+            (source(1, 1, "Boys"), &heat_a),
+            (source(1, 2, "Boys"), &heat_b),
+        ];
+
+        let mixed = build_mixed_heats(sources, 2);
+
+        assert_eq!(mixed.len(), 2);
+        assert_eq!(mixed[0].lanes.len(), 2);
+        assert_eq!(mixed[1].lanes.len(), 2);
     }
 }
