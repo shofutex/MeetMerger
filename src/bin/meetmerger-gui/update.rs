@@ -195,6 +195,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             state.timer_export_result = Some(result);
             Task::none()
         }
+        Message::ToggleShowChanges => {
+            state.show_changes = !state.show_changes;
+            Task::none()
+        }
     }
 }
 

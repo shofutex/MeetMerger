@@ -3,8 +3,8 @@ use std::path::Path;
 
 use printpdf::*;
 
-use crate::merge::MixedHeat;
-use crate::model::{Event, Lane, Meet};
+use crate::merge::{MixedHeat, MixedHeatSource};
+use crate::model::{Event, Lane, Meet, Swimmer};
 
 // US Letter portrait, in millimeters.
 const PAGE_W: f32 = 215.9;
@@ -208,6 +208,83 @@ fn mixed_heat_groups(mixed_heats: &[MixedHeat]) -> Vec<&[MixedHeat]> {
         i = end;
     }
     groups
+}
+
+pub struct ChangeRow {
+    pub assigned_lane: u32,
+    pub swimmer_name: String,
+    pub original_event: u32,
+    pub original_heat: u32,
+    pub original_lane: u32,
+}
+
+pub struct ChangeHeat {
+    pub heat_label: String,
+    pub rows: Vec<ChangeRow>,
+}
+
+pub struct ChangeEvent {
+    pub event_name: String,
+    pub heats: Vec<ChangeHeat>,
+}
+
+// Finds where a swimmer now sitting in a mixed heat originally raced, by
+// checking each of the mixed heat's source heats for a matching swimmer.
+fn find_original_lane(
+    meet: &Meet,
+    sources: &[MixedHeatSource],
+    swimmer: &Swimmer,
+) -> Option<(u32, u32, u32)> {
+    sources.iter().find_map(|source| {
+        let lane = meet
+            .events
+            .iter()
+            .find(|e| e.number == source.event_number)
+            .and_then(|e| e.heats.iter().find(|h| h.number == source.heat_number))
+            .and_then(|h| h.lanes.iter().find(|l| l.swimmer.as_ref() == Some(swimmer)))?;
+        Some((source.event_number, source.heat_number, lane.number))
+    })
+}
+
+// A flat report of every swimmer moved into a mixed heat: their newly
+// assigned lane alongside where they raced originally, so a human can
+// sanity-check the merge before printing.
+pub fn build_changes(meet: &Meet, mixed_heats: &[MixedHeat]) -> Vec<ChangeEvent> {
+    mixed_heat_groups(mixed_heats)
+        .into_iter()
+        .filter_map(|group| {
+            let first = group.first()?;
+            let heats: Vec<ChangeHeat> = group
+                .iter()
+                .map(|mixed| ChangeHeat {
+                    heat_label: format!("Heat {} of {}", mixed.heat_index, mixed.heat_count),
+                    rows: mixed
+                        .lanes
+                        .iter()
+                        .filter_map(|lane| {
+                            let swimmer = lane.swimmer.as_ref()?;
+                            let (original_event, original_heat, original_lane) =
+                                find_original_lane(meet, &mixed.sources, swimmer)?;
+                            Some(ChangeRow {
+                                assigned_lane: lane.number,
+                                swimmer_name: format!(
+                                    "{}, {}",
+                                    swimmer.last_name, swimmer.first_name
+                                ),
+                                original_event,
+                                original_heat,
+                                original_lane,
+                            })
+                        })
+                        .collect(),
+                })
+                .collect();
+            Some(ChangeEvent {
+                event_name: first.header.clone(),
+                heats,
+            })
+        })
+        .collect()
 }
 
 // Walks events in rotated print order; for each event, emits one PrintEvent
@@ -1177,6 +1254,70 @@ mod tests {
         assert_eq!(events[0].heats[0].heat_label, "Heat 1 of 3");
         assert_eq!(events[0].heats[1].heat_label, "Heat 2 of 3");
         assert_eq!(events[0].heats[2].heat_label, "Heat 3 of 3");
+    }
+
+    #[test]
+    fn build_changes_finds_each_swimmers_original_lane() {
+        let heat_a = Heat {
+            number: 1,
+            of: 1,
+            lanes: vec![
+                Lane {
+                    number: 1,
+                    swimmer: Some(swimmer("Slow")),
+                },
+                Lane {
+                    number: 2,
+                    swimmer: Some(swimmer("Fast")),
+                },
+            ],
+        };
+        let heat_b = Heat {
+            number: 1,
+            of: 1,
+            lanes: vec![Lane {
+                number: 1,
+                swimmer: Some(swimmer("Mid")),
+            }],
+        };
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![
+                event(1, vec![heat_a.clone()]),
+                event(2, vec![heat_b.clone()]),
+            ],
+        };
+
+        let sources = vec![(mixed_source(1, 1), &heat_a), (mixed_source(2, 1), &heat_b)];
+        let mixed = crate::merge::build_mixed_heats(sources, 6);
+
+        let changes = build_changes(&meet, &mixed);
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].heats.len(), 1);
+        let rows = &changes[0].heats[0].rows;
+        assert_eq!(rows.len(), 3);
+
+        let row_for = |name: &str| {
+            rows.iter()
+                .find(|r| r.swimmer_name.starts_with(name))
+                .unwrap()
+        };
+        let slow = row_for("Slow");
+        assert_eq!(
+            (slow.original_event, slow.original_heat, slow.original_lane),
+            (1, 1, 1)
+        );
+        let fast = row_for("Fast");
+        assert_eq!(
+            (fast.original_event, fast.original_heat, fast.original_lane),
+            (1, 1, 2)
+        );
+        let mid = row_for("Mid");
+        assert_eq!(
+            (mid.original_event, mid.original_heat, mid.original_lane),
+            (2, 1, 1)
+        );
     }
 
     #[test]

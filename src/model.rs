@@ -36,7 +36,7 @@ pub struct Lane {
     pub swimmer: Option<Swimmer>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Swimmer {
     pub last_name: String,
     pub first_name: String,

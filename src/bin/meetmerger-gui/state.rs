@@ -42,6 +42,8 @@ pub struct Wizard {
     pub heats_per_page: String,
     pub is_exporting_timers: bool,
     pub timer_export_result: Option<Result<PathBuf, String>>,
+
+    pub show_changes: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -78,4 +80,6 @@ pub enum Message {
     ExportTimerSheets,
     TimerExportPathPicked(Option<PathBuf>),
     TimerSheetsExported(Result<PathBuf, String>),
+
+    ToggleShowChanges,
 }

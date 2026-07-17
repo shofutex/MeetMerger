@@ -343,6 +343,40 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
         .spacing(12),
     );
 
+    let changes_button_label = if state.show_changes {
+        "Hide merge changes"
+    } else {
+        "Show merge changes"
+    };
+    col = col.push(button(changes_button_label).on_press(Message::ToggleShowChanges));
+
+    if state.show_changes {
+        let changes = export::build_changes(meet, &state.mixed_heats);
+        if changes.is_empty() {
+            col = col.push(text("No merged heats yet."));
+        } else {
+            for change_event in &changes {
+                let mut event_col =
+                    column![text(change_event.event_name.clone()).size(16)].spacing(4);
+                for heat in &change_event.heats {
+                    event_col = event_col.push(text(format!("  {}", heat.heat_label)));
+                    for row in &heat.rows {
+                        event_col = event_col.push(text(format!(
+                            "    Lane {}: {} (was #{} Heat {}, Lane {})",
+                            row.assigned_lane,
+                            row.swimmer_name,
+                            row.original_event,
+                            row.original_heat,
+                            row.original_lane
+                        )));
+                    }
+                }
+                col = col.push(event_col);
+                col = col.push(rule::horizontal(1));
+            }
+        }
+    }
+
     if state.is_exporting {
         col = col.push(text("Exporting heat sheet..."));
     }
