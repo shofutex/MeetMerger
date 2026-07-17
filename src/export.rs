@@ -46,8 +46,19 @@ const TEAM_X: f32 = 38.0;
 const TIME_X: f32 = 52.0;
 
 // "Last, First" longer than this wraps the first name onto its own line so
-// the EXH badge has room next to whatever's left on the name's line.
-const NAME_WRAP_THRESHOLD: usize = 15;
+// the EXH badge has room next to whatever's left on the name's line. Only
+// exhibition swimmers need that room, so non-exhibition swimmers get a
+// longer threshold before wrapping.
+const NAME_WRAP_THRESHOLD_EXH: usize = 15;
+const NAME_WRAP_THRESHOLD_OTHER: usize = 22;
+
+fn name_wrap_threshold(exhibition: bool) -> usize {
+    if exhibition {
+        NAME_WRAP_THRESHOLD_EXH
+    } else {
+        NAME_WRAP_THRESHOLD_OTHER
+    }
+}
 
 // Timer sheets print single-column, full page width, one page per lane.
 const TIMER_CONTENT_WIDTH: f32 = PAGE_W - 2.0 * MARGIN;
@@ -543,8 +554,8 @@ impl PrintLine<'_> {
             PrintLine::EventName(_) => EVENT_LINE_H,
             PrintLine::Divider => DIVIDER_LINE_H,
             PrintLine::HeatLabel(_) => HEAT_LABEL_LINE_H,
-            PrintLine::Swimmer(_, last, first, ..) => {
-                if full_name_len(last, first) > NAME_WRAP_THRESHOLD {
+            PrintLine::Swimmer(_, last, first, _, _, exhibition) => {
+                if full_name_len(last, first) > name_wrap_threshold(*exhibition) {
                     SWIMMER_LINE_H * 2.0
                 } else {
                     SWIMMER_LINE_H
@@ -802,7 +813,7 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
 
                 // Long names push the first name to a second line so the
                 // EXH badge always has room next to whatever's on that line.
-                let rest_y = if full_name_len(last, first) > NAME_WRAP_THRESHOLD {
+                let rest_y = if full_name_len(last, first) > name_wrap_threshold(*exhibition) {
                     show_text_at(
                         ops,
                         BuiltinFont::Helvetica,
