@@ -49,4 +49,6 @@ When you've merged all of the heats you plan to merge, review the final meet ove
 #### Step 4:
 Finally, you have the option to generate a new heat sheet with the mixed heats and timer sheets that match. 
 You have the option to enter abbreviations for the teams if desired.
+
+Our team has an individual medley (IM) carnival as one of the last meets and so we put the IM events first. There's an option to start with a higher level events in the heat sheet and timer sheets as well.
 ![Screenshot of the final export page](/images/export.png)
