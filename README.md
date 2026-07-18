@@ -37,3 +37,16 @@ You can also just double-click the executable and load the files in the interfac
 #### Step 1:
 Select the heats to merge
 ![Screenshot of selecting the heats to merge](/images/heat_selection.png)
+
+#### Step 2:
+Review the merged heat. You have the option to change the name if desired
+![Screenshot of the mixed heat](/images/mixed_heat.png)
+
+#### Step 3:
+When you've merged all of the heats you plan to merge, review the final meet overview:
+![Screenshot of the meet overview](/images/final_preview.png)
+
+#### Step 4:
+Finally, you have the option to generate a new heat sheet with the mixed heats and timer sheets that match. 
+You have the option to enter abbreviations for the teams if desired.
+![Screenshot of the final export page](/images/export.png)
