@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::LazyLock;
 
@@ -46,6 +47,8 @@ static LANE_RE: LazyLock<Regex> = LazyLock::new(|| {
     )
     .unwrap()
 });
+static CSV_NAME_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?P<last>[^,]+), (?P<first>.+)$").unwrap());
 
 /// Replace every stray glyph gap left by the PDF's font with one consistent,
 /// easy-to-paste marker, then fix the one word we know unambiguously
@@ -188,4 +191,220 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
         events: builder.events,
     };
     (meet, issues)
+}
+
+fn csv_header_index(headers: &csv::StringRecord, matcher: impl Fn(&str) -> bool) -> Option<usize> {
+    headers.iter().position(|h| matcher(&h.trim().to_lowercase()))
+}
+
+/// Parse a CSV of individual lane entries into a `Meet`. Expected columns
+/// (matched case-insensitively, in any order): event name (in the same
+/// "#N Gender AgeGroup Dm Stroke" form as the PDF heat sheet), a heat column
+/// (e.g. "Heat 2 of 3"), lane, name ("Last, First", optionally suffixed
+/// " EXH"), age, team, and entry time. Rows whose event/heat/name fields
+/// don't match the expected shape are skipped and reported as issues, same
+/// as unparsed lines from the PDF importer. The CSV has no title/date
+/// header, so the caller supplies a title (typically the file name).
+pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
+    let mut issues = Vec::new();
+    let mut events: BTreeMap<u32, Event> = BTreeMap::new();
+
+    let mut reader = csv::ReaderBuilder::new().from_reader(data.as_bytes());
+    let headers = match reader.headers() {
+        Ok(headers) => headers.clone(),
+        Err(err) => {
+            issues.push(Issue::UnparsedLine {
+                line: 1,
+                text: format!("couldn't read CSV header: {err}"),
+            });
+            return (
+                Meet {
+                    title: title.to_string(),
+                    date: String::new(),
+                    events: Vec::new(),
+                },
+                issues,
+            );
+        }
+    };
+
+    let idx_event = csv_header_index(&headers, |h| h == "event name" || h == "event");
+    let idx_heat = csv_header_index(&headers, |h| h.contains("heat"));
+    let idx_lane = csv_header_index(&headers, |h| h == "lane");
+    let idx_name = csv_header_index(&headers, |h| h == "name" || h == "swimmer");
+    let idx_age = csv_header_index(&headers, |h| h == "age");
+    let idx_team = csv_header_index(&headers, |h| h == "team");
+    let idx_time = csv_header_index(&headers, |h| h.contains("time"));
+
+    for (row_number, result) in reader.records().enumerate() {
+        let line = row_number + 2; // header occupies line 1
+        let Ok(record) = result else {
+            issues.push(Issue::UnparsedLine {
+                line,
+                text: "couldn't parse CSV row".to_string(),
+            });
+            continue;
+        };
+
+        let field = |idx: Option<usize>| idx.and_then(|i| record.get(i)).unwrap_or("").trim();
+
+        let event_name = field(idx_event);
+        let heat_label = field(idx_heat);
+        let lane_field = field(idx_lane);
+        let name_field = field(idx_name);
+        let age_field = field(idx_age);
+        let team_field = field(idx_team);
+        let time_field = field(idx_time);
+
+        let Some(event_caps) = EVENT_RE.captures(event_name) else {
+            issues.push(Issue::UnparsedLine {
+                line,
+                text: format!("couldn't parse event name: {event_name:?}"),
+            });
+            continue;
+        };
+        let Some(heat_caps) = HEAT_RE.captures(heat_label) else {
+            issues.push(Issue::UnparsedLine {
+                line,
+                text: format!("couldn't parse heat: {heat_label:?}"),
+            });
+            continue;
+        };
+
+        let event_number: u32 = event_caps["num"].parse().unwrap_or(0);
+        let event = events.entry(event_number).or_insert_with(|| Event {
+            number: event_number,
+            gender: event_caps["gender"].to_string(),
+            age_group: event_caps["age_group"].to_string(),
+            distance_m: event_caps["dist"].parse().unwrap_or(0),
+            stroke: event_caps["stroke"].to_string(),
+            heats: Vec::new(),
+        });
+
+        let heat_number: u32 = heat_caps["n"].parse().unwrap_or(0);
+        let heat_of: u32 = heat_caps["of"].parse().unwrap_or(0);
+        let heat_pos = match event.heats.iter().position(|h| h.number == heat_number) {
+            Some(pos) => pos,
+            None => {
+                event.heats.push(Heat {
+                    number: heat_number,
+                    of: heat_of,
+                    lanes: Vec::new(),
+                });
+                event.heats.len() - 1
+            }
+        };
+
+        let swimmer = if name_field.is_empty() || name_field == "—" || name_field == "-" {
+            None
+        } else {
+            match CSV_NAME_RE.captures(name_field) {
+                Some(caps) => {
+                    let mut first = caps["first"].trim();
+                    let mut exhibition = false;
+                    if let Some(stripped) = first.strip_suffix("EXH") {
+                        exhibition = true;
+                        first = stripped.trim();
+                    }
+                    Some(Swimmer {
+                        last_name: caps["last"].trim().to_string(),
+                        first_name: first.to_string(),
+                        age: age_field.parse().unwrap_or(0),
+                        exhibition,
+                        team: team_field.to_string(),
+                        seed_time: parse_seed_time(time_field),
+                    })
+                }
+                None => {
+                    issues.push(Issue::UnparsedLine {
+                        line,
+                        text: format!("couldn't parse name: {name_field:?}"),
+                    });
+                    None
+                }
+            }
+        };
+
+        event.heats[heat_pos].lanes.push(Lane {
+            number: lane_field.parse().unwrap_or(0),
+            swimmer,
+        });
+    }
+
+    for event in events.values_mut() {
+        event.heats.sort_by_key(|h| h.number);
+        for heat in &mut event.heats {
+            heat.lanes.sort_by_key(|l| l.number);
+        }
+    }
+
+    let meet = Meet {
+        title: title.to_string(),
+        date: String::new(),
+        events: events.into_values().collect(),
+    };
+    (meet, issues)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_meet_csv_builds_events_heats_and_lanes_regardless_of_row_order() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time
+#2 Girls 10 & Under 50m Freestyle,Heat 1 of 1,4,\"Doe, Jane\",9,Sharks,32.10
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 2,3,\"Smith, John\",7,Dolphins,NT
+#1 Boys 8 & Under 25m Freestyle,Heat 2 of 2,1,\"Roe, Sam EXH\",8,Dolphins,1:02.34
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        assert_eq!(meet.title, "My Meet");
+        assert_eq!(meet.events.len(), 2);
+
+        let event1 = &meet.events[0];
+        assert_eq!(event1.number, 1);
+        assert_eq!(event1.gender, "Boys");
+        assert_eq!(event1.heats.len(), 2);
+        let heat1 = &event1.heats[0];
+        assert_eq!(heat1.number, 1);
+        assert_eq!(heat1.of, 2);
+        assert_eq!(heat1.lanes[0].number, 3);
+        let swimmer = heat1.lanes[0].swimmer.as_ref().unwrap();
+        assert_eq!(swimmer.last_name, "Smith");
+        assert_eq!(swimmer.first_name, "John");
+        assert_eq!(swimmer.seed_time, SeedTime::NoTime);
+
+        let heat2 = &event1.heats[1];
+        let exh_swimmer = heat2.lanes[0].swimmer.as_ref().unwrap();
+        assert_eq!(exh_swimmer.first_name, "Sam");
+        assert!(exh_swimmer.exhibition);
+
+        let event2 = &meet.events[1];
+        assert_eq!(event2.number, 2);
+        assert_eq!(event2.heats[0].lanes[0].number, 4);
+    }
+
+    #[test]
+    fn parse_meet_csv_reports_unparseable_event_name_as_an_issue() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time
+Not A Real Event,Heat 1 of 1,1,\"Doe, Jane\",9,Sharks,32.10
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(meet.events.is_empty());
+        assert_eq!(issues.len(), 1);
+    }
+
+    #[test]
+    fn parse_meet_csv_treats_a_dash_name_as_an_empty_lane() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,2,—,,,
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(issues.is_empty());
+        assert!(meet.events[0].heats[0].lanes[0].swimmer.is_none());
+    }
 }

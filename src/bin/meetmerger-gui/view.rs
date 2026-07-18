@@ -67,6 +67,10 @@ fn view_load(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
         Some(path) => format!("Corrections: {}", path.display()),
         None => "No corrections file".to_string(),
     };
+    let csv_label = match &state.csv_path {
+        Some(path) => format!("CSV: {}", path.display()),
+        None => "No CSV selected".to_string(),
+    };
 
     let mut col = column![
         text("MeetMerger").size(28),
@@ -80,6 +84,13 @@ fn view_load(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
             text(corrections_label),
         ]
         .spacing(12),
+        text("— or —"),
+        row![
+            button("Choose CSV entries file...").on_press(Message::PickCsv),
+            text(csv_label),
+        ]
+        .spacing(12),
+        text("CSV columns: event name, heat, lane, name, age, team, entry time").size(12),
     ]
     .spacing(12);
 
@@ -99,7 +110,8 @@ fn view_load(state: &Wizard) -> (Element<'_, Message>, Element<'_, Message>) {
         }
     }
 
-    let load_button = if state.pdf_path.is_some() && !state.is_loading {
+    let load_button = if (state.pdf_path.is_some() || state.csv_path.is_some()) && !state.is_loading
+    {
         button("Load").on_press(Message::LoadMeet)
     } else {
         button("Load")

@@ -25,17 +25,29 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             }
             Task::none()
         }
+        Message::PickCsv => Task::perform(dialog::pick_csv(), Message::CsvPicked),
+        Message::CsvPicked(path) => {
+            if path.is_some() {
+                state.csv_path = path;
+            }
+            Task::none()
+        }
         Message::LoadMeet => {
-            let Some(pdf_path) = state.pdf_path.clone() else {
+            if state.csv_path.is_none() && state.pdf_path.is_none() {
                 return Task::none();
-            };
+            }
             state.is_loading = true;
             state.load_error = None;
-            let corrections_path = state.corrections_path.clone();
-            Task::perform(
-                dialog::load_and_parse(pdf_path, corrections_path),
-                Message::MeetLoaded,
-            )
+            if let Some(csv_path) = state.csv_path.clone() {
+                Task::perform(dialog::load_and_parse_csv(csv_path), Message::MeetLoaded)
+            } else {
+                let pdf_path = state.pdf_path.clone().unwrap();
+                let corrections_path = state.corrections_path.clone();
+                Task::perform(
+                    dialog::load_and_parse(pdf_path, corrections_path),
+                    Message::MeetLoaded,
+                )
+            }
         }
         Message::MeetLoaded(result) => {
             state.is_loading = false;

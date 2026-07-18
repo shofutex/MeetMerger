@@ -22,6 +22,14 @@ pub async fn pick_corrections() -> Option<PathBuf> {
         .map(|f| f.path().to_path_buf())
 }
 
+pub async fn pick_csv() -> Option<PathBuf> {
+    rfd::AsyncFileDialog::new()
+        .add_filter("CSV entries", &["csv"])
+        .pick_file()
+        .await
+        .map(|f| f.path().to_path_buf())
+}
+
 // Mirrors the CLI's default: <pdf>.corrections.txt next to the heat sheet, if it exists.
 pub fn default_corrections_path(pdf_path: &Path) -> Option<PathBuf> {
     let candidate = pdf_path.with_extension("corrections.txt");
@@ -50,6 +58,15 @@ pub async fn load_and_parse(
     };
     let text = parse::apply_corrections(&parse::normalize_corruption(&raw), &corrections);
     Ok(parse::parse_meet(&text))
+}
+
+pub async fn load_and_parse_csv(csv_path: PathBuf) -> Result<(Meet, Vec<Issue>), String> {
+    let data = std::fs::read_to_string(&csv_path).map_err(|e| e.to_string())?;
+    let title = csv_path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    Ok(parse::parse_meet_csv(&data, &title))
 }
 
 pub async fn pick_save_path(default_name: String) -> Option<PathBuf> {

@@ -21,6 +21,7 @@ pub struct Wizard {
     pub step: Step,
     pub pdf_path: Option<PathBuf>,
     pub corrections_path: Option<PathBuf>,
+    pub csv_path: Option<PathBuf>,
     pub is_loading: bool,
     pub load_error: Option<String>,
     pub meet: Option<Meet>,
@@ -52,6 +53,8 @@ pub enum Message {
     PdfPicked(Option<PathBuf>),
     PickCorrections,
     CorrectionsPicked(Option<PathBuf>),
+    PickCsv,
+    CsvPicked(Option<PathBuf>),
     LoadMeet,
     MeetLoaded(Result<(Meet, Vec<Issue>), String>),
 
