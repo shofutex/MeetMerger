@@ -13,10 +13,11 @@ The input heat sheet should be structured as follows (PDF):
 Or as follows for CSV:
 ```
 event name,heat,lane,name,age,team,entry time
-#1 Boys 8 & Under 25m Freestyle,Heat 1 of 2,1,"Roe, Sam EXH",8,Dolphins,1:02.34
-#1 Boys 8 & Under 25m Freestyle,Heat 1 of 2,3,"Smith, John",7,Dolphins,NT
-#1 Boys 8 & Under 25m Freestyle,Heat 2 of 2,2,—,,,
-#2 Girls 10 & Under 50m Freestyle,Heat 1 of 1,4,"Doe, Jane",9,Sharks,32.10
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,1,"Roe, Sam EXH",8,Dolphins,1:02.34
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,2,"Smith, John",7,Dolphins,NT
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,3,—,,,
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,4,"Body, Any",8,Sharks,1:01.32
+#2 Girls 8 & Under 25m Freestyle,Heat 1 of 1,4,"Doe, Jane",7,Sharks,32.10
 ```
 
 
