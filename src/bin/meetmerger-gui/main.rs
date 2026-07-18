@@ -12,6 +12,8 @@ use state::{Message, Wizard};
 use update::update;
 use view::view;
 
+static INTER: &[u8] = include_bytes!("../../../fonts/Inter-Regular.ttf");
+
 /// MeetMerger GUI wizard.
 ///
 /// Ingests a Swimtopia Meet Maestro heat sheet PDF, or a CSV of lane entries,
@@ -59,5 +61,6 @@ fn main() -> iced::Result {
     iced::application(move || boot(&cli), update, view)
         .title("MeetMerger")
         .theme(theme)
+        .font(INTER)
         .run()
 }
