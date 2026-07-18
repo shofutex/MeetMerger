@@ -41,8 +41,19 @@ const EXH_X: f32 = 26.0;
 const EXH_BOX_W: f32 = 5.15;
 const EXH_BOX_H: f32 = 2.8;
 const EXH_BOX_RADIUS: f32 = 0.7;
-const AGE_X: f32 = 32.0;
+// Age is right-justified so single- and double-digit ages line up on their
+// ones digit. Right edge of the age slot, 2mm before the team field starts.
+const AGE_RIGHT_X: f32 = 36.0;
 const TEAM_X: f32 = 38.0;
+// Adobe AFM: every digit 0-9 in Helvetica is exactly 556/1000 em wide, so an
+// age's on-page width is computable without printpdf's (nonexistent) string
+// measurement — no font-metrics table needed for numeric text.
+const HELVETICA_DIGIT_WIDTH_EM: f32 = 0.556;
+const PT_TO_MM: f32 = 25.4 / 72.0;
+
+fn digits_width_mm(digits: &str, size_pt: f32) -> f32 {
+    digits.chars().count() as f32 * HELVETICA_DIGIT_WIDTH_EM * size_pt * PT_TO_MM
+}
 const TIME_X: f32 = 52.0;
 
 // "Last, First" longer than this wraps the first name onto its own line so
@@ -983,13 +994,14 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
                 if *exhibition {
                     draw_exh_badge(ops, col_x + EXH_X, rest_y);
                 }
+                let age_text = age.to_string();
                 show_text_at(
                     ops,
                     BuiltinFont::Helvetica,
                     7.0,
-                    col_x + AGE_X,
+                    col_x + AGE_RIGHT_X - digits_width_mm(&age_text, 7.0),
                     rest_y,
-                    &age.to_string(),
+                    &age_text,
                 );
                 show_text_at(
                     ops,
