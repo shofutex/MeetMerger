@@ -62,5 +62,6 @@ fn main() -> iced::Result {
         .title("MeetMerger")
         .theme(theme)
         .font(INTER)
+        .default_font(iced::Font::with_name("Inter"))
         .run()
 }
