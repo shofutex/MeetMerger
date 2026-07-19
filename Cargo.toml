@@ -1,8 +1,8 @@
 [package]
 name = "meetmerger"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
-description = "Ingest Swimtopia Meet Maestro heat sheets and recombine heats to maximize pool lane usage."
+description = "Ingest heat sheets and recombine heats to maximize pool lane usage."
 license = "GPLv3"
 
 [dependencies]
