@@ -1,3 +1,4 @@
-test-data/*pdf
+test-data/sample_heat_sheet_*pdf
+test-data/sample_heat_sheet_*txt
 target
 fonts/

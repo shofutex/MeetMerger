@@ -1,5 +1,0 @@
-# garbled=fixed
-# One line per fix. The left side must match exactly what the tool printed
-# (including the � marker) for an unresolved name/team.
-Le�as=Leffas
-Gri�n=Griffin
