@@ -49,13 +49,31 @@ static LANE_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static CSV_NAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(?P<last>[^,]+), (?P<first>.+)$").unwrap());
-// A record's name line: a team acronym, then the swimmer's name in "First
-// Last" order (unlike the "Last, First" lane rows use).
+// A team acronym is always an all-caps (and/or digit) token, e.g. "FO",
+// "VAC", "L", "NVSL" — unlike a team's full name, which is title-case and
+// always has at least one lowercase letter. This is what lets the record
+// scanner below tell "the start of the next record" apart from "the
+// previous record's team name line".
+const ACRONYM_RE_FRAGMENT: &str = r"[A-Z][A-Z0-9]*";
+// A one-line record: acronym, swimmer name ("First Last" order, unlike the
+// "Last, First" lane rows use), year, and time all on one line.
+static ONE_LINE_RECORD_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!(
+        r"^(?P<acronym>{ACRONYM_RE_FRAGMENT}) (?P<name>.+?) (?P<year>\d{{4}}) (?P<time>(?:\d+:)?\d+\.\d{{2}})$"
+    ))
+    .unwrap()
+});
+// A record's name line with no year/time attached yet — the rest (a team
+// name, and/or the year and time) follows on the next one or two lines.
 static RECORD_NAME_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?P<acronym>\S+) (?P<name>.+)$").unwrap());
+    LazyLock::new(|| Regex::new(&format!(r"^(?P<acronym>{ACRONYM_RE_FRAGMENT}) (?P<name>.+)$")).unwrap());
 static RECORD_YEAR_TIME_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?P<year>\d{4}) (?P<time>(?:\d+:)?\d+\.\d{2})$").unwrap()
 });
+static RECORD_YEAR_ONLY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?P<year>\d{4})$").unwrap());
+static RECORD_TIME_ONLY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:\d+:)?\d+\.\d{2}$").unwrap());
 
 /// Replace every stray glyph gap left by the PDF's font with one consistent,
 /// easy-to-paste marker, then fix the one word we know unambiguously
@@ -100,10 +118,11 @@ struct Builder {
     current_event: Option<Event>,
     current_heat: Option<Heat>,
     // Between an event's header and its first heat, the heat sheet may show
-    // a 3-line record block (name+acronym, team name, year+time). Lines are
-    // buffered here until we know whether a heat or another event line ends
-    // the window, since we can't tell whether a record is present from the
-    // first line alone.
+    // one standing-record block per team, back to back, each spanning one to
+    // three lines (see `resolve_pending_record`). Lines are buffered here
+    // until we know whether a heat or another event line ends the window,
+    // since we can't tell how many records are present from the first line
+    // alone.
     awaiting_record: bool,
     record_lines: Vec<(usize, String)>,
     // An "Alternates" list follows an event's heats; every line until the
@@ -133,46 +152,95 @@ impl Builder {
     }
 
     // Resolves the buffered record-window lines (if any) against the current
-    // event, once a heat or the next event line closes the window. Lines
-    // that don't fit the expected 3-line shape are reported as issues rather
-    // than silently dropped.
+    // event, once a heat or the next event line closes the window. Scans
+    // sequentially rather than assuming a fixed line count, since each
+    // team's record block independently takes one of a few shapes:
+    //   - one line: "acronym name year time"
+    //   - two lines: "acronym name" then "year time" (no team name shown)
+    //   - three lines: "acronym name" then "team name" then "year time"
+    //   - three lines: "acronym name" then "year" then "time" (no team name,
+    //     year and time on their own lines)
+    // A line that doesn't fit the start of any of these shapes — including
+    // one left dangling with no year/time to follow it — is reported as an
+    // issue instead of silently dropped.
     fn resolve_pending_record(&mut self, issues: &mut Vec<Issue>) {
         if !self.awaiting_record {
             return;
         }
         self.awaiting_record = false;
         let lines = std::mem::take(&mut self.record_lines);
-        if lines.is_empty() {
-            return;
-        }
-        let record = if lines.len() == 3 {
-            RECORD_NAME_RE
-                .captures(&lines[0].1)
-                .zip(RECORD_YEAR_TIME_RE.captures(&lines[2].1))
-                .map(|(name_caps, time_caps)| Record {
-                    team_acronym: name_caps["acronym"].to_string(),
-                    swimmer_name: name_caps["name"].to_string(),
-                    team_name: lines[1].1.clone(),
+        let mut records = Vec::new();
+        let mut i = 0;
+        while i < lines.len() {
+            let (line_number, text) = &lines[i];
+            if let Some(caps) = ONE_LINE_RECORD_RE.captures(text) {
+                records.push(Record {
+                    team_acronym: caps["acronym"].to_string(),
+                    swimmer_name: caps["name"].to_string(),
+                    team_name: String::new(),
+                    year: caps["year"].parse().unwrap_or(0),
+                    time: caps["time"].to_string(),
+                });
+                i += 1;
+                continue;
+            }
+            let Some(name_caps) = RECORD_NAME_RE.captures(text) else {
+                issues.push(Issue::UnparsedLine {
+                    line: *line_number,
+                    text: text.clone(),
+                });
+                i += 1;
+                continue;
+            };
+            let team_acronym = name_caps["acronym"].to_string();
+            let swimmer_name = name_caps["name"].to_string();
+            if let Some(next) = lines.get(i + 1).and_then(|(_, t)| RECORD_YEAR_TIME_RE.captures(t))
+            {
+                records.push(Record {
+                    team_acronym,
+                    swimmer_name,
+                    team_name: String::new(),
+                    year: next["year"].parse().unwrap_or(0),
+                    time: next["time"].to_string(),
+                });
+                i += 2;
+            } else if lines
+                .get(i + 1)
+                .is_some_and(|(_, t)| RECORD_YEAR_ONLY_RE.is_match(t))
+                && lines
+                    .get(i + 2)
+                    .is_some_and(|(_, t)| RECORD_TIME_ONLY_RE.is_match(t))
+            {
+                records.push(Record {
+                    team_acronym,
+                    swimmer_name,
+                    team_name: String::new(),
+                    year: lines[i + 1].1.parse().unwrap_or(0),
+                    time: lines[i + 2].1.clone(),
+                });
+                i += 3;
+            } else if let Some(time_caps) = lines
+                .get(i + 2)
+                .and_then(|(_, t)| RECORD_YEAR_TIME_RE.captures(t))
+            {
+                records.push(Record {
+                    team_acronym,
+                    swimmer_name,
+                    team_name: lines[i + 1].1.clone(),
                     year: time_caps["year"].parse().unwrap_or(0),
                     time: time_caps["time"].to_string(),
-                })
-        } else {
-            None
-        };
-        match record {
-            Some(record) => {
-                if let Some(event) = self.current_event.as_mut() {
-                    event.record = Some(record);
-                }
+                });
+                i += 3;
+            } else {
+                issues.push(Issue::UnparsedLine {
+                    line: *line_number,
+                    text: text.clone(),
+                });
+                i += 1;
             }
-            None => {
-                for (line_number, text) in lines {
-                    issues.push(Issue::UnparsedLine {
-                        line: line_number,
-                        text,
-                    });
-                }
-            }
+        }
+        if let Some(event) = self.current_event.as_mut() {
+            event.records = records;
         }
     }
 }
@@ -214,7 +282,7 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
                 distance_m: caps["dist"].parse().unwrap_or(0),
                 stroke: caps["stroke"].to_string(),
                 heats: Vec::new(),
-                record: None,
+                records: Vec::new(),
             });
             builder.start_record_window();
         } else if let Some(caps) = HEAT_RE.captures(&line) {
@@ -290,9 +358,9 @@ fn csv_header_index(headers: &csv::StringRecord, matcher: impl Fn(&str) -> bool)
 /// header, so the caller supplies a title (typically the file name).
 ///
 /// Five more columns are optional: "record team", "record name", "record
-/// year", "record time", "record team name". They only need to be filled in
-/// on one row of an event (any others are blank) — whichever row has all
-/// five non-empty sets that event's record.
+/// year", "record time", "record team name". An event can hold more than one
+/// team's record — fill them in on one row per team (any other rows are
+/// blank); every row with all five non-empty adds one record to that event.
 pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
     let mut issues = Vec::new();
     let mut events: BTreeMap<u32, Event> = BTreeMap::new();
@@ -377,7 +445,7 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
             distance_m: event_caps["dist"].parse().unwrap_or(0),
             stroke: event_caps["stroke"].to_string(),
             heats: Vec::new(),
-            record: None,
+            records: Vec::new(),
         });
 
         if !record_team_field.is_empty()
@@ -386,13 +454,16 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
             && !record_time_field.is_empty()
             && !record_team_name_field.is_empty()
         {
-            event.record = Some(Record {
+            let record = Record {
                 team_acronym: record_team_field.to_string(),
                 swimmer_name: record_name_field.to_string(),
                 year: record_year_field.parse().unwrap_or(0),
                 time: record_time_field.to_string(),
                 team_name: record_team_name_field.to_string(),
-            });
+            };
+            if !event.records.contains(&record) {
+                event.records.push(record);
+            }
         }
 
         let heat_number: u32 = heat_caps["n"].parse().unwrap_or(0);
@@ -478,7 +549,8 @@ Heat 1 of 1
         let (meet, issues) = parse_meet(text);
         assert!(issues.is_empty(), "unexpected issues: {issues:?}");
         assert_eq!(meet.events.len(), 1);
-        let record = meet.events[0].record.as_ref().expect("record");
+        assert_eq!(meet.events[0].records.len(), 1);
+        let record = &meet.events[0].records[0];
         assert_eq!(record.team_acronym, "FO");
         assert_eq!(record.swimmer_name, "Anthony Grimm");
         assert_eq!(record.team_name, "Fair Oaks Sharks");
@@ -487,7 +559,7 @@ Heat 1 of 1
     }
 
     #[test]
-    fn parse_meet_leaves_record_none_when_the_event_has_no_record_block() {
+    fn parse_meet_leaves_records_empty_when_the_event_has_no_record_block() {
         let text = "\
 #1 Boys 8 & Under 25m Freestyle
 Heat 1 of 1
@@ -495,7 +567,7 @@ Heat 1 of 1
 ";
         let (meet, issues) = parse_meet(text);
         assert!(issues.is_empty(), "unexpected issues: {issues:?}");
-        assert!(meet.events[0].record.is_none());
+        assert!(meet.events[0].records.is_empty());
     }
 
     #[test]
@@ -507,8 +579,78 @@ Heat 1 of 1
 1 LaPier, Liam 8 CP Cruisers 27.87
 ";
         let (meet, issues) = parse_meet(text);
-        assert!(meet.events[0].record.is_none());
+        assert!(meet.events[0].records.is_empty());
         assert_eq!(issues.len(), 1);
+    }
+
+    #[test]
+    fn parse_meet_attaches_one_record_per_team_in_any_of_their_shapes() {
+        // Real divisional heat sheets mix all of these shapes within one
+        // event's record block: a combined one-liner, the classic
+        // name/team-name/year-time trio, and a name followed by year and
+        // time each on their own line with no team name shown at all.
+        let text = "\
+#11 Boys 8 & Under 25m Backstroke
+NVSL Roman Lowery
+2007
+18.15
+
+FO Anthony Grimm
+Fair Oaks Sharks
+2011 18.16
+
+WC Nathaniel Temeles 2015 19.67
+
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        let records = &meet.events[0].records;
+        assert_eq!(records.len(), 3);
+
+        assert_eq!(records[0].team_acronym, "NVSL");
+        assert_eq!(records[0].swimmer_name, "Roman Lowery");
+        assert_eq!(records[0].team_name, "");
+        assert_eq!(records[0].year, 2007);
+        assert_eq!(records[0].time, "18.15");
+
+        assert_eq!(records[1].team_acronym, "FO");
+        assert_eq!(records[1].team_name, "Fair Oaks Sharks");
+        assert_eq!(records[1].year, 2011);
+
+        assert_eq!(records[2].team_acronym, "WC");
+        assert_eq!(records[2].swimmer_name, "Nathaniel Temeles");
+        assert_eq!(records[2].team_name, "");
+        assert_eq!(records[2].year, 2015);
+        assert_eq!(records[2].time, "19.67");
+    }
+
+    #[test]
+    fn parse_meet_recovers_a_records_team_name_even_after_a_stray_blank_line() {
+        // Some divisional heat sheets insert a spurious blank line between a
+        // record's name line and the rest of its block — the scan is
+        // sequential and content-based rather than position-based, so it
+        // isn't thrown off by that extra blank.
+        let text = "\
+#11 Boys 8 & Under 25m Backstroke
+L Henry Rossman
+
+Langley Wildthings
+2026 31.69
+
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        let records = &meet.events[0].records;
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].team_acronym, "L");
+        assert_eq!(records[0].swimmer_name, "Henry Rossman");
+        assert_eq!(records[0].team_name, "Langley Wildthings");
+        assert_eq!(records[0].year, 2026);
+        assert_eq!(records[0].time, "31.69");
     }
 
     #[test]
@@ -601,7 +743,8 @@ event name,heat,lane,name,age,team,entry time,record team,record name,record yea
 ";
         let (meet, issues) = parse_meet_csv(data, "My Meet");
         assert!(issues.is_empty(), "unexpected issues: {issues:?}");
-        let record = meet.events[0].record.as_ref().expect("record");
+        assert_eq!(meet.events[0].records.len(), 1);
+        let record = &meet.events[0].records[0];
         assert_eq!(record.team_acronym, "FO");
         assert_eq!(record.swimmer_name, "Anthony Grimm");
         assert_eq!(record.year, 2011);
@@ -610,13 +753,28 @@ event name,heat,lane,name,age,team,entry time,record team,record name,record yea
     }
 
     #[test]
-    fn parse_meet_csv_leaves_record_none_without_the_optional_columns() {
+    fn parse_meet_csv_leaves_records_empty_without_the_optional_columns() {
         let data = "\
 event name,heat,lane,name,age,team,entry time
 #1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,1,\"LaPier, Liam\",8,CP Cruisers,27.87
 ";
         let (meet, issues) = parse_meet_csv(data, "My Meet");
         assert!(issues.is_empty(), "unexpected issues: {issues:?}");
-        assert!(meet.events[0].record.is_none());
+        assert!(meet.events[0].records.is_empty());
+    }
+
+    #[test]
+    fn parse_meet_csv_attaches_one_record_per_team_from_multiple_rows() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time,record team,record name,record year,record time,record team name
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,1,\"LaPier, Liam\",8,CP Cruisers,27.87,FO,Anthony Grimm,2011,18.16,Fair Oaks Sharks
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,2,\"Doe, Jane\",8,Sharks,28.00,WC,Nathaniel Temeles,2015,19.67,WC Wahoos
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        let records = &meet.events[0].records;
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].team_acronym, "FO");
+        assert_eq!(records[1].team_acronym, "WC");
     }
 }

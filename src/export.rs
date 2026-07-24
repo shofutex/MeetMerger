@@ -58,13 +58,16 @@ const TIME_X: f32 = 52.0;
 
 // A record row mirrors the swimmer row's columns: acronym box at LANE_X,
 // bold name at NAME_X, bold year right-justified at AGE_RIGHT_X, bold time
-// at TIME_X, then the team name on its own line underneath the swimmer name.
-// The box must fit within the LANE_X..NAME_X gap or it overlaps the name.
+// at TIME_X. A long name wraps onto its own line, pushing year/time to a
+// second line, the same way a long swimmer name pushes age/team/time down.
 const RECORD_BOX_W: f32 = 5.5;
 const RECORD_BOX_H: f32 = 3.6;
 const RECORD_ACRONYM_SIZE: f32 = 5.5;
 const RECORD_LINE_H: f32 = SWIMMER_LINE_H;
-const RECORD_TEAM_LINE_H: f32 = SWIMMER_LINE_H;
+// A record name longer than this (e.g. "John Paul Gonsalves") would run into
+// the year column at AGE_RIGHT_X, so it gets its own line instead, same
+// spirit as `name_wrap_threshold` for swimmer rows.
+const RECORD_NAME_WRAP_THRESHOLD: usize = 17;
 
 // "Last, First" longer than this wraps the first name onto its own line so
 // the EXH badge has room next to whatever's left on the name's line. Only
@@ -155,7 +158,8 @@ pub struct PrintHeat {
 pub struct PrintEvent {
     pub event_name: String,
     pub heats: Vec<PrintHeat>,
-    pub record: Option<PrintRecord>,
+    // One entry per team holding a standing record for this event.
+    pub records: Vec<PrintRecord>,
     // The originating event's number — the anchor event's, for a mixed
     // heat's synthesized block. Used to let the page-break-before-event
     // option find where to start a fresh page, regardless of rotation.
@@ -167,7 +171,6 @@ pub struct PrintRecord {
     pub swimmer_name: String,
     pub year: u32,
     pub time: String,
-    pub team_name: String,
 }
 
 fn abbreviate<'a>(team: &'a str, abbreviations: &'a HashMap<String, String>) -> &'a str {
@@ -329,7 +332,6 @@ fn print_record(record: &Record) -> PrintRecord {
         swimmer_name: record.swimmer_name.clone(),
         year: record.year,
         time: record.time.clone(),
-        team_name: record.team_name.clone(),
     }
 }
 
@@ -339,9 +341,10 @@ fn print_record(record: &Record) -> PrintRecord {
 // ordering. A mixed heat's splits are treated like a normal event's heats:
 // one PrintEvent, its name shown once, holding every split underneath.
 // Skips events left with no remaining heats. `show_records` controls whether
-// an event's record (if the source heat sheet had one) is attached to its
-// PrintEvent; a mixed heat's synthesized PrintEvent never carries a record,
-// since it may draw from more than one original event.
+// an event's records (if the source heat sheet had any — one per team that
+// holds a standing record) are attached to its PrintEvent; a mixed heat's
+// synthesized PrintEvent never carries records, since it may draw from more
+// than one original event.
 pub fn build_print_events(
     meet: &Meet,
     consumed: &HashSet<(u32, u32)>,
@@ -366,10 +369,10 @@ pub fn build_print_events(
             events.push(PrintEvent {
                 event_name: event_name(event),
                 heats,
-                record: if show_records {
-                    event.record.as_ref().map(print_record)
+                records: if show_records {
+                    event.records.iter().map(print_record).collect()
                 } else {
-                    None
+                    Vec::new()
                 },
                 number: event.number,
             });
@@ -390,7 +393,7 @@ pub fn build_print_events(
                 events.push(PrintEvent {
                     event_name: first.header.clone(),
                     heats,
-                    record: None,
+                    records: Vec::new(),
                     number: first.anchor_event(),
                 });
             }
@@ -738,7 +741,13 @@ impl PrintLine<'_> {
                 }
             }
             PrintLine::Divider => DIVIDER_LINE_H,
-            PrintLine::Record(_) => RECORD_LINE_H + RECORD_TEAM_LINE_H,
+            PrintLine::Record(record) => {
+                if record.swimmer_name.chars().count() > RECORD_NAME_WRAP_THRESHOLD {
+                    RECORD_LINE_H * 2.0
+                } else {
+                    RECORD_LINE_H
+                }
+            }
             PrintLine::HeatLabel(_) => HEAT_LABEL_LINE_H,
             PrintLine::Swimmer(_, last, first, _, _, exhibition, _) => {
                 if full_name_len(last, first) > name_wrap_threshold(*exhibition) {
@@ -779,7 +788,7 @@ fn build_chunks(events: &[PrintEvent], show_entry_times: bool) -> Vec<Chunk<'_>>
                 let (first, second) = wrap_event_name(&event.event_name);
                 lines.push(PrintLine::EventName(first, second));
                 lines.push(PrintLine::Divider);
-                if let Some(record) = &event.record {
+                for record in &event.records {
                     lines.push(PrintLine::Record(record));
                 }
             }
@@ -832,10 +841,20 @@ fn pack_columns(
             }
         }
 
+        // A lone trailing gap only exists to separate this event from the
+        // next one within the same column. If it's what overflows the
+        // column, the column break itself is all the separation needed —
+        // otherwise it'd carry over as an orphaned blank line at the top of
+        // the next column, ahead of that column's first real event name.
+        let is_trailing_gap = matches!(chunk.lines.as_slice(), [PrintLine::Gap]);
+
         let h = chunk.height();
         if used + h > COLUMN_HEIGHT && !current.is_empty() {
             columns.push(std::mem::take(&mut current));
             used = 0.0;
+            if is_trailing_gap {
+                continue;
+            }
         }
         used += h;
         current.extend(chunk.lines);
@@ -964,9 +983,20 @@ fn draw_exh_badge(ops: &mut Vec<Op>, x: f32, y: f32) {
     });
 }
 
+// Real acronyms range from one letter ("L") to a few ("NVSL"); the box
+// widens for anything longer than 2 characters (font size stays fixed) so
+// the text never overflows it. The swimmer name then starts right after
+// the box instead of at the fixed NAME_X, so it's never crowded either.
+fn record_box_width(acronym: &str) -> f32 {
+    let len = acronym.chars().count().max(1) as f32;
+    RECORD_BOX_W + (len - 2.0).max(0.0) * 1.1
+}
+
 // A filled black square holding the record holder's team acronym in white
 // bold text, e.g. the "FO" box in front of a pool/meet record's name.
 fn draw_record_box(ops: &mut Vec<Op>, x: f32, y: f32, acronym: &str) {
+    let box_w = record_box_width(acronym);
+
     ops.push(Op::SetFillColor {
         col: rgb(0.0, 0.0, 0.0),
     });
@@ -974,7 +1004,7 @@ fn draw_record_box(ops: &mut Vec<Op>, x: f32, y: f32, acronym: &str) {
         rectangle: Rect {
             x: Mm(x).into(),
             y: Mm(y - 0.6).into(),
-            width: Mm(RECORD_BOX_W).into(),
+            width: Mm(box_w).into(),
             height: Mm(RECORD_BOX_H).into(),
             mode: Some(PaintMode::Fill),
             winding_order: None,
@@ -1062,21 +1092,32 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
             }
             PrintLine::Record(record) => {
                 draw_record_box(ops, col_x + LANE_X, y, &record.team_acronym);
+                // A wider box (for a 3-4 character acronym) pushes the name
+                // start to the right accordingly, same gap as NAME_X leaves
+                // for the standard 1-2 character box.
+                let record_name_x = LANE_X + record_box_width(&record.team_acronym) + 0.5;
                 show_text_at(
                     ops,
                     BuiltinFont::HelveticaBold,
                     7.0,
-                    col_x + NAME_X,
+                    col_x + record_name_x,
                     y,
                     &record.swimmer_name,
                 );
+                // A long name gets its own line, pushing year/time down —
+                // otherwise they'd run into the tail end of the name.
+                let rest_y = if record.swimmer_name.chars().count() > RECORD_NAME_WRAP_THRESHOLD {
+                    y - RECORD_LINE_H
+                } else {
+                    y
+                };
                 let year_text = record.year.to_string();
                 show_text_at(
                     ops,
                     BuiltinFont::HelveticaBold,
                     7.0,
                     col_x + AGE_RIGHT_X - digits_width_mm(&year_text, 7.0),
-                    y,
+                    rest_y,
                     &year_text,
                 );
                 show_text_at(
@@ -1084,16 +1125,8 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
                     BuiltinFont::HelveticaBold,
                     7.0,
                     col_x + TIME_X,
-                    y,
+                    rest_y,
                     &record.time,
-                );
-                show_text_at(
-                    ops,
-                    BuiltinFont::Helvetica,
-                    7.0,
-                    col_x + NAME_X,
-                    y - RECORD_LINE_H,
-                    &record.team_name,
                 );
             }
             PrintLine::HeatLabel(label) => {
@@ -1257,20 +1290,24 @@ mod tests {
             distance_m: 25,
             stroke: "Freestyle".to_string(),
             heats,
-            record: None,
+            records: Vec::new(),
         }
     }
 
-    fn event_with_record(number: u32, heats: Vec<Heat>) -> Event {
+    fn event_with_records(number: u32, heats: Vec<Heat>, records: Vec<Record>) -> Event {
         Event {
-            record: Some(Record {
-                team_acronym: "FO".to_string(),
-                swimmer_name: "Anthony Grimm".to_string(),
-                year: 2011,
-                time: "18.16".to_string(),
-                team_name: "Fair Oaks Sharks".to_string(),
-            }),
+            records,
             ..event(number, heats)
+        }
+    }
+
+    fn fair_oaks_record() -> Record {
+        Record {
+            team_acronym: "FO".to_string(),
+            swimmer_name: "Anthony Grimm".to_string(),
+            year: 2011,
+            time: "18.16".to_string(),
+            team_name: "Fair Oaks Sharks".to_string(),
         }
     }
 
@@ -1414,42 +1451,77 @@ mod tests {
     }
 
     #[test]
-    fn build_print_events_attaches_record_when_show_records_is_true() {
+    fn build_print_events_attaches_records_when_show_records_is_true() {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![event_with_record(1, vec![heat(1, 1)])],
+            events: vec![event_with_records(
+                1,
+                vec![heat(1, 1)],
+                vec![fair_oaks_record()],
+            )],
         };
         let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, true);
 
-        let record = events[0].record.as_ref().expect("record");
+        assert_eq!(events[0].records.len(), 1);
+        let record = &events[0].records[0];
         assert_eq!(record.team_acronym, "FO");
         assert_eq!(record.swimmer_name, "Anthony Grimm");
         assert_eq!(record.year, 2011);
         assert_eq!(record.time, "18.16");
-        assert_eq!(record.team_name, "Fair Oaks Sharks");
     }
 
     #[test]
-    fn build_print_events_omits_record_when_show_records_is_false() {
+    fn build_print_events_attaches_multiple_teams_records() {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
-            events: vec![event_with_record(1, vec![heat(1, 1)])],
+            events: vec![event_with_records(
+                1,
+                vec![heat(1, 1)],
+                vec![
+                    fair_oaks_record(),
+                    Record {
+                        team_acronym: "WC".to_string(),
+                        swimmer_name: "Nathaniel Temeles".to_string(),
+                        year: 2015,
+                        time: "19.67".to_string(),
+                        team_name: String::new(),
+                    },
+                ],
+            )],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, true);
+
+        assert_eq!(events[0].records.len(), 2);
+        assert_eq!(events[0].records[0].team_acronym, "FO");
+        assert_eq!(events[0].records[1].team_acronym, "WC");
+    }
+
+    #[test]
+    fn build_print_events_omits_records_when_show_records_is_false() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event_with_records(
+                1,
+                vec![heat(1, 1)],
+                vec![fair_oaks_record()],
+            )],
         };
         let events =
             build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
 
-        assert!(events[0].record.is_none());
+        assert!(events[0].records.is_empty());
     }
 
     #[test]
-    fn build_print_events_never_attaches_a_record_to_a_mixed_heat_group() {
+    fn build_print_events_never_attaches_records_to_a_mixed_heat_group() {
         let meet = Meet {
             title: "Test Meet".to_string(),
             date: "Jan 1".to_string(),
             events: vec![
-                event_with_record(1, vec![heat(1, 1)]),
+                event_with_records(1, vec![heat(1, 1)], vec![fair_oaks_record()]),
                 event(2, vec![heat(1, 1)]),
             ],
         };
@@ -1486,7 +1558,7 @@ mod tests {
 
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
-        assert!(events[0].record.is_none());
+        assert!(events[0].records.is_empty());
     }
 
     fn mixed_source(event_number: u32, heat_number: u32) -> MixedHeatSource {
@@ -1696,7 +1768,7 @@ mod tests {
                     seed_time,
                 }],
             }],
-            record: None,
+            records: Vec::new(),
             number: 1,
         }
     }
@@ -1848,6 +1920,36 @@ mod tests {
         // Breaking before the very first chunk shouldn't insert a blank
         // leading page -- there's nothing before it to push off the page.
         assert_eq!(columns.len(), 1);
+    }
+
+    #[test]
+    fn pack_columns_drops_a_trailing_gap_that_would_orphan_at_the_top_of_the_next_column() {
+        // Fill the column almost exactly, so the event's *trailing* gap chunk
+        // (not its heats) is what overflows -- reproducing a real bug where
+        // that gap carried over as a blank line at the very top of the next
+        // column, ahead of the next event's name.
+        let filler_lines = (COLUMN_HEIGHT / EVENT_GAP_H).floor() as usize;
+        let event_1_heats = Chunk {
+            lines: (0..filler_lines).map(|_| PrintLine::Gap).collect(),
+            starts_event: Some(1),
+        };
+        let trailing_gap = Chunk {
+            lines: vec![PrintLine::Gap],
+            starts_event: None,
+        };
+        let event_2 = Chunk {
+            lines: vec![PrintLine::Gap],
+            starts_event: Some(2),
+        };
+
+        let columns = pack_columns(vec![event_1_heats, trailing_gap, event_2], None);
+
+        assert_eq!(columns.len(), 2);
+        assert_eq!(
+            columns[1].len(),
+            1,
+            "the orphaned trailing gap should be dropped, not carried into the next column"
+        );
     }
 
     #[test]
@@ -2007,7 +2109,7 @@ mod tests {
                     seed_time: SeedTime::Seconds(20.0),
                 }],
             }],
-            record: None,
+            records: Vec::new(),
             number: 1,
         };
         write_pdf("Test Meet", &[print_event], false, None, &path).expect("write_pdf should succeed");
