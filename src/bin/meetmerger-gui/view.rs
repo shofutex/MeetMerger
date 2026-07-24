@@ -214,11 +214,7 @@ fn view_select_heats(state: &Wizard) -> (Element<'_, Message>, Element<'_, Messa
     } else {
         button("Create mixed heat(s)")
     });
-    actions = actions.push(if !state.mixed_heats.is_empty() {
-        button("Finish").on_press(Message::Finish)
-    } else {
-        button("Finish")
-    });
+    actions = actions.push(button("Finish").on_press(Message::Finish));
     actions = actions.push(text(totals_label));
 
     (col.into(), actions.into())
@@ -235,10 +231,8 @@ fn view_mixed_heat_edit(state: &Wizard) -> (Element<'_, Message>, Element<'_, Me
     let mut col = column![text("Mixed heat header(s)").size(18)].spacing(14);
 
     for (index, pending) in state.pending.iter().enumerate() {
-        let mut heat_col = column![
-            text_input("Mixed heat header", &pending.header)
-                .on_input(move |header| Message::HeaderEdited(index, header)),
-        ]
+        let mut heat_col = column![text_input("Mixed heat header", &pending.header)
+            .on_input(move |header| Message::HeaderEdited(index, header)),]
         .spacing(2);
         for lane in &pending.lanes {
             heat_col = heat_col.push(text(lane_line(lane)));
@@ -317,11 +311,19 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
         );
     };
 
-    let mut col =
-        column![
-            text("Optional team abbreviations for the printed PDF (blank = full name):").size(18)
+    let mut col = column![].spacing(8);
+
+    col = col.push(
+        row![
+            text("Meet name (used on the printed sheets and file name):"),
+            text_input(&meet.title, &state.meet_title).on_input(Message::MeetTitleChanged),
         ]
-        .spacing(8);
+        .spacing(12),
+    );
+
+    col = col.push(
+        text("Optional team abbreviations for the printed PDF (blank = full name):").size(18),
+    );
 
     for team in export::distinct_teams(meet, &state.consumed, &state.mixed_heats) {
         let value = state
@@ -361,6 +363,13 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
         "Show merge changes"
     };
     col = col.push(button(changes_button_label).on_press(Message::ToggleShowChanges));
+
+    let records_button_label = if state.show_records {
+        "Exclude records from heat sheet"
+    } else {
+        "Include records in heat sheet"
+    };
+    col = col.push(button(records_button_label).on_press(Message::ToggleShowRecords));
 
     if state.show_changes {
         let changes = export::build_changes(meet, &state.mixed_heats);

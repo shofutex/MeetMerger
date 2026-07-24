@@ -35,8 +35,10 @@ pub struct Wizard {
     pub selection: HashSet<(u32, u32)>,
     pub pending: Vec<MixedHeat>,
 
+    pub meet_title: String,
     pub export_start_event: String,
     pub team_abbreviations: HashMap<String, String>,
+    pub show_records: bool,
     pub is_exporting: bool,
     pub export_result: Option<Result<PathBuf, String>>,
 
@@ -75,6 +77,8 @@ pub enum Message {
     GoToTeamAbbreviations,
     BackToFinalPreview,
     TeamAbbreviationChanged(String, String),
+    MeetTitleChanged(String),
+    ToggleShowRecords,
     ExportPdf,
     ExportPathPicked(Option<PathBuf>),
     PdfExported(Result<PathBuf, String>),

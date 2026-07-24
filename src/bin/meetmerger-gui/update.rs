@@ -54,6 +54,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             match result {
                 Ok((meet, issues)) => {
                     state.lane_capacity = merge::infer_lane_capacity(&meet);
+                    state.meet_title = meet.title.clone();
                     state.meet = Some(meet);
                     state.issues = issues;
                     state.step = Step::Review;
@@ -132,11 +133,19 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             state.team_abbreviations.insert(team, abbreviation);
             Task::none()
         }
+        Message::MeetTitleChanged(value) => {
+            state.meet_title = value;
+            Task::none()
+        }
+        Message::ToggleShowRecords => {
+            state.show_records = !state.show_records;
+            Task::none()
+        }
         Message::ExportPdf => {
-            let Some(meet) = &state.meet else {
+            if state.meet.is_none() {
                 return Task::none();
-            };
-            let default_name = format!("{}_heat_sheet.pdf", sanitize_filename(&meet.title));
+            }
+            let default_name = format!("{}_heat_sheet.pdf", sanitize_filename(&state.meet_title));
             state.export_result = None;
             Task::perform(
                 dialog::pick_save_path(default_name),
@@ -144,9 +153,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             )
         }
         Message::ExportPathPicked(path) => {
-            let (Some(path), Some(meet)) = (path, state.meet.clone()) else {
+            let (Some(path), Some(mut meet)) = (path, state.meet.clone()) else {
                 return Task::none();
             };
+            meet.title = state.meet_title.clone();
             let start_event = state.export_start_event.trim().parse().unwrap_or(1);
             state.is_exporting = true;
             Task::perform(
@@ -156,6 +166,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
                     state.mixed_heats.clone(),
                     state.team_abbreviations.clone(),
                     start_event,
+                    state.show_records,
                     path,
                 ),
                 Message::PdfExported,
@@ -171,10 +182,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::ExportTimerSheets => {
-            let Some(meet) = &state.meet else {
+            if state.meet.is_none() {
                 return Task::none();
-            };
-            let default_name = format!("{}_timer_sheets.pdf", sanitize_filename(&meet.title));
+            }
+            let default_name = format!("{}_timer_sheets.pdf", sanitize_filename(&state.meet_title));
             state.timer_export_result = None;
             Task::perform(
                 dialog::pick_save_path(default_name),
@@ -182,9 +193,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             )
         }
         Message::TimerExportPathPicked(path) => {
-            let (Some(path), Some(meet)) = (path, state.meet.clone()) else {
+            let (Some(path), Some(mut meet)) = (path, state.meet.clone()) else {
                 return Task::none();
             };
+            meet.title = state.meet_title.clone();
             let start_event = state.export_start_event.trim().parse().unwrap_or(1);
             let heats_per_page = state.heats_per_page.trim().parse().ok().filter(|n| *n > 0);
             state.is_exporting_timers = true;

@@ -13,3 +13,6 @@ regex = "1"
 iced = "0.14"
 rfd = "0.17"
 printpdf = "0.11"
+
+[profile.release]
+strip = true

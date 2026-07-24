@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
-use crate::model::{Event, Heat, Lane, Meet, SeedTime, Swimmer, CORRUPTION_MARKER};
+use crate::model::{Event, Heat, Lane, Meet, Record, SeedTime, Swimmer, CORRUPTION_MARKER};
 
 /// A gap in the parse: either a line we didn't recognize, or a name/team the
 /// PDF's font couldn't render (left behind as `CORRUPTION_MARKER`). Neither
@@ -49,6 +49,13 @@ static LANE_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 static CSV_NAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(?P<last>[^,]+), (?P<first>.+)$").unwrap());
+// A record's name line: a team acronym, then the swimmer's name in "First
+// Last" order (unlike the "Last, First" lane rows use).
+static RECORD_NAME_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?P<acronym>\S+) (?P<name>.+)$").unwrap());
+static RECORD_YEAR_TIME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?P<year>\d{4}) (?P<time>(?:\d+:)?\d+\.\d{2})$").unwrap()
+});
 
 /// Replace every stray glyph gap left by the PDF's font with one consistent,
 /// easy-to-paste marker, then fix the one word we know unambiguously
@@ -92,6 +99,16 @@ struct Builder {
     events: Vec<Event>,
     current_event: Option<Event>,
     current_heat: Option<Heat>,
+    // Between an event's header and its first heat, the heat sheet may show
+    // a 3-line record block (name+acronym, team name, year+time). Lines are
+    // buffered here until we know whether a heat or another event line ends
+    // the window, since we can't tell whether a record is present from the
+    // first line alone.
+    awaiting_record: bool,
+    record_lines: Vec<(usize, String)>,
+    // An "Alternates" list follows an event's heats; every line until the
+    // next event header is noise we intentionally drop.
+    skipping_alternates: bool,
 }
 
 impl Builder {
@@ -107,6 +124,55 @@ impl Builder {
         self.flush_heat();
         if let Some(event) = self.current_event.take() {
             self.events.push(event);
+        }
+    }
+
+    fn start_record_window(&mut self) {
+        self.awaiting_record = true;
+        self.record_lines.clear();
+    }
+
+    // Resolves the buffered record-window lines (if any) against the current
+    // event, once a heat or the next event line closes the window. Lines
+    // that don't fit the expected 3-line shape are reported as issues rather
+    // than silently dropped.
+    fn resolve_pending_record(&mut self, issues: &mut Vec<Issue>) {
+        if !self.awaiting_record {
+            return;
+        }
+        self.awaiting_record = false;
+        let lines = std::mem::take(&mut self.record_lines);
+        if lines.is_empty() {
+            return;
+        }
+        let record = if lines.len() == 3 {
+            RECORD_NAME_RE
+                .captures(&lines[0].1)
+                .zip(RECORD_YEAR_TIME_RE.captures(&lines[2].1))
+                .map(|(name_caps, time_caps)| Record {
+                    team_acronym: name_caps["acronym"].to_string(),
+                    swimmer_name: name_caps["name"].to_string(),
+                    team_name: lines[1].1.clone(),
+                    year: time_caps["year"].parse().unwrap_or(0),
+                    time: time_caps["time"].to_string(),
+                })
+        } else {
+            None
+        };
+        match record {
+            Some(record) => {
+                if let Some(event) = self.current_event.as_mut() {
+                    event.record = Some(record);
+                }
+            }
+            None => {
+                for (line_number, text) in lines {
+                    issues.push(Issue::UnparsedLine {
+                        line: line_number,
+                        text,
+                    });
+                }
+            }
         }
     }
 }
@@ -127,10 +193,19 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
         }
         let line = collapse_whitespace(line);
 
+        if builder.skipping_alternates {
+            if EVENT_RE.is_match(&line) {
+                builder.skipping_alternates = false;
+            } else {
+                continue;
+            }
+        }
+
         if let Some(caps) = HEADER_RE.captures(&line) {
             title.get_or_insert_with(|| caps["title"].to_string());
             date.get_or_insert_with(|| caps["date"].to_string());
         } else if let Some(caps) = EVENT_RE.captures(&line) {
+            builder.resolve_pending_record(&mut issues);
             builder.flush_event();
             builder.current_event = Some(Event {
                 number: caps["num"].parse().unwrap_or(0),
@@ -139,14 +214,21 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
                 distance_m: caps["dist"].parse().unwrap_or(0),
                 stroke: caps["stroke"].to_string(),
                 heats: Vec::new(),
+                record: None,
             });
+            builder.start_record_window();
         } else if let Some(caps) = HEAT_RE.captures(&line) {
+            builder.resolve_pending_record(&mut issues);
             builder.flush_heat();
             builder.current_heat = Some(Heat {
                 number: caps["n"].parse().unwrap_or(0),
                 of: caps["of"].parse().unwrap_or(0),
                 lanes: Vec::new(),
             });
+        } else if line == "Alternates" {
+            builder.skipping_alternates = true;
+        } else if builder.awaiting_record {
+            builder.record_lines.push((line_number + 1, line));
         } else if let Some(caps) = LANE_RE.captures(&line) {
             let lane_number: u32 = caps["lane"].parse().unwrap_or(0);
             let swimmer = caps.name("last").map(|_| Swimmer {
@@ -183,6 +265,7 @@ pub fn parse_meet(text: &str) -> (Meet, Vec<Issue>) {
             });
         }
     }
+    builder.resolve_pending_record(&mut issues);
     builder.flush_event();
 
     let meet = Meet {
@@ -279,6 +362,7 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
             distance_m: event_caps["dist"].parse().unwrap_or(0),
             stroke: event_caps["stroke"].to_string(),
             heats: Vec::new(),
+            record: None,
         });
 
         let heat_number: u32 = heat_caps["n"].parse().unwrap_or(0);
@@ -349,6 +433,76 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_meet_attaches_a_record_shown_before_the_first_heat() {
+        let text = "\
+#11 Boys 8 & Under 25m Backstroke
+FO Anthony Grimm
+Fair Oaks Sharks
+2011 18.16
+
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        assert_eq!(meet.events.len(), 1);
+        let record = meet.events[0].record.as_ref().expect("record");
+        assert_eq!(record.team_acronym, "FO");
+        assert_eq!(record.swimmer_name, "Anthony Grimm");
+        assert_eq!(record.team_name, "Fair Oaks Sharks");
+        assert_eq!(record.year, 2011);
+        assert_eq!(record.time, "18.16");
+    }
+
+    #[test]
+    fn parse_meet_leaves_record_none_when_the_event_has_no_record_block() {
+        let text = "\
+#1 Boys 8 & Under 25m Freestyle
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        assert!(meet.events[0].record.is_none());
+    }
+
+    #[test]
+    fn parse_meet_reports_a_malformed_record_block_as_issues_instead_of_dropping_it() {
+        let text = "\
+#1 Boys 8 & Under 25m Freestyle
+Some Garbled Line
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(meet.events[0].record.is_none());
+        assert_eq!(issues.len(), 1);
+    }
+
+    #[test]
+    fn parse_meet_ignores_alternates_between_an_events_heats_and_the_next_event() {
+        let text = "\
+#1 Boys 8 & Under 25m Freestyle
+Heat 1 of 1
+1 LaPier, Liam 8 CP Cruisers 27.87
+
+Alternates
+Bamberger, Weston 7 Langley 26.37
+Gaughan, Lincoln 6 WC Wahoos 26.59
+
+#2 Girls 8 & Under 25m Freestyle
+Heat 1 of 1
+1 Doe, Jane 7 Sharks 32.10
+";
+        let (meet, issues) = parse_meet(text);
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        assert_eq!(meet.events.len(), 2);
+        assert_eq!(meet.events[0].heats[0].lanes.len(), 1);
+        assert_eq!(meet.events[1].number, 2);
+        assert_eq!(meet.events[1].heats[0].lanes[0].number, 1);
+    }
 
     #[test]
     fn parse_meet_csv_builds_events_heats_and_lanes_regardless_of_row_order() {

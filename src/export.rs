@@ -4,7 +4,7 @@ use std::path::Path;
 use printpdf::*;
 
 use crate::merge::{MixedHeat, MixedHeatSource};
-use crate::model::{Event, Lane, Meet, Swimmer};
+use crate::model::{Event, Lane, Meet, Record, Swimmer};
 
 // US Letter portrait, in millimeters.
 const PAGE_W: f32 = 215.9;
@@ -55,6 +55,16 @@ fn digits_width_mm(digits: &str, size_pt: f32) -> f32 {
     digits.chars().count() as f32 * HELVETICA_DIGIT_WIDTH_EM * size_pt * PT_TO_MM
 }
 const TIME_X: f32 = 52.0;
+
+// A record row mirrors the swimmer row's columns: acronym box at LANE_X,
+// bold name at NAME_X, bold year right-justified at AGE_RIGHT_X, bold time
+// at TIME_X, then the team name on its own line underneath the swimmer name.
+// The box must fit within the LANE_X..NAME_X gap or it overlaps the name.
+const RECORD_BOX_W: f32 = 5.5;
+const RECORD_BOX_H: f32 = 3.6;
+const RECORD_ACRONYM_SIZE: f32 = 5.5;
+const RECORD_LINE_H: f32 = SWIMMER_LINE_H;
+const RECORD_TEAM_LINE_H: f32 = SWIMMER_LINE_H;
 
 // "Last, First" longer than this wraps the first name onto its own line so
 // the EXH badge has room next to whatever's left on the name's line. Only
@@ -144,6 +154,15 @@ pub struct PrintHeat {
 pub struct PrintEvent {
     pub event_name: String,
     pub heats: Vec<PrintHeat>,
+    pub record: Option<PrintRecord>,
+}
+
+pub struct PrintRecord {
+    pub team_acronym: String,
+    pub swimmer_name: String,
+    pub year: u32,
+    pub time: String,
+    pub team_name: String,
 }
 
 fn abbreviate<'a>(team: &'a str, abbreviations: &'a HashMap<String, String>) -> &'a str {
@@ -298,18 +317,32 @@ pub fn build_changes(meet: &Meet, mixed_heats: &[MixedHeat]) -> Vec<ChangeEvent>
         .collect()
 }
 
+fn print_record(record: &Record) -> PrintRecord {
+    PrintRecord {
+        team_acronym: record.team_acronym.clone(),
+        swimmer_name: record.swimmer_name.clone(),
+        year: record.year,
+        time: record.time.clone(),
+        team_name: record.team_name.clone(),
+    }
+}
+
 // Walks events in rotated print order; for each event, emits one PrintEvent
 // holding every remaining (non-consumed) heat, then interleaves any mixed
 // heats anchored to that event number, mirroring the GUI's Final Preview
 // ordering. A mixed heat's splits are treated like a normal event's heats:
 // one PrintEvent, its name shown once, holding every split underneath.
-// Skips events left with no remaining heats.
+// Skips events left with no remaining heats. `show_records` controls whether
+// an event's record (if the source heat sheet had one) is attached to its
+// PrintEvent; a mixed heat's synthesized PrintEvent never carries a record,
+// since it may draw from more than one original event.
 pub fn build_print_events(
     meet: &Meet,
     consumed: &HashSet<(u32, u32)>,
     mixed_heats: &[MixedHeat],
     abbreviations: &HashMap<String, String>,
     start_event: u32,
+    show_records: bool,
 ) -> Vec<PrintEvent> {
     let mixed_groups = mixed_heat_groups(mixed_heats);
     let mut events = Vec::new();
@@ -327,6 +360,11 @@ pub fn build_print_events(
             events.push(PrintEvent {
                 event_name: event_name(event),
                 heats,
+                record: if show_records {
+                    event.record.as_ref().map(print_record)
+                } else {
+                    None
+                },
             });
         }
 
@@ -345,6 +383,7 @@ pub fn build_print_events(
                 events.push(PrintEvent {
                     event_name: first.header.clone(),
                     heats,
+                    record: None,
                 });
             }
         }
@@ -672,6 +711,7 @@ enum PrintLine<'a> {
     // Second line present when the event name wraps.
     EventName(&'a str, Option<&'a str>),
     Divider,
+    Record(&'a PrintRecord),
     HeatLabel(&'a str),
     // (lane, last_name, first_name, age, team, exhibition)
     Swimmer(u32, &'a str, &'a str, u32, &'a str, bool),
@@ -689,6 +729,7 @@ impl PrintLine<'_> {
                 }
             }
             PrintLine::Divider => DIVIDER_LINE_H,
+            PrintLine::Record(_) => RECORD_LINE_H + RECORD_TEAM_LINE_H,
             PrintLine::HeatLabel(_) => HEAT_LABEL_LINE_H,
             PrintLine::Swimmer(_, last, first, _, _, exhibition) => {
                 if full_name_len(last, first) > name_wrap_threshold(*exhibition) {
@@ -725,6 +766,9 @@ fn build_chunks(events: &[PrintEvent]) -> Vec<Chunk<'_>> {
                 let (first, second) = wrap_event_name(&event.event_name);
                 lines.push(PrintLine::EventName(first, second));
                 lines.push(PrintLine::Divider);
+                if let Some(record) = &event.record {
+                    lines.push(PrintLine::Record(record));
+                }
             }
             lines.push(PrintLine::HeatLabel(&heat.heat_label));
             for swimmer in &heat.swimmers {
@@ -883,6 +927,40 @@ fn draw_exh_badge(ops: &mut Vec<Op>, x: f32, y: f32) {
     });
 }
 
+// A filled black square holding the record holder's team acronym in white
+// bold text, e.g. the "FO" box in front of a pool/meet record's name.
+fn draw_record_box(ops: &mut Vec<Op>, x: f32, y: f32, acronym: &str) {
+    ops.push(Op::SetFillColor {
+        col: rgb(0.0, 0.0, 0.0),
+    });
+    ops.push(Op::DrawRectangle {
+        rectangle: Rect {
+            x: Mm(x).into(),
+            y: Mm(y - 0.6).into(),
+            width: Mm(RECORD_BOX_W).into(),
+            height: Mm(RECORD_BOX_H).into(),
+            mode: Some(PaintMode::Fill),
+            winding_order: None,
+        },
+    });
+    ops.push(Op::SetFillColor {
+        col: rgb(1.0, 1.0, 1.0),
+    });
+    show_text_at(
+        ops,
+        BuiltinFont::HelveticaBold,
+        RECORD_ACRONYM_SIZE,
+        x + 0.6,
+        y + 0.2,
+        acronym,
+    );
+    // Every other line in the document relies on the default black fill for
+    // text, so it must be restored once this badge is done with white.
+    ops.push(Op::SetFillColor {
+        col: rgb(0.0, 0.0, 0.0),
+    });
+}
+
 fn emit_header(
     ops: &mut Vec<Op>,
     left_label: &str,
@@ -944,6 +1022,42 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
             }
             PrintLine::Divider => {
                 draw_hline(ops, col_x, col_x + COL_WIDTH, y, 0.5, rgb(0.5, 0.5, 0.5));
+            }
+            PrintLine::Record(record) => {
+                draw_record_box(ops, col_x + LANE_X, y, &record.team_acronym);
+                show_text_at(
+                    ops,
+                    BuiltinFont::HelveticaBold,
+                    7.0,
+                    col_x + NAME_X,
+                    y,
+                    &record.swimmer_name,
+                );
+                let year_text = record.year.to_string();
+                show_text_at(
+                    ops,
+                    BuiltinFont::HelveticaBold,
+                    7.0,
+                    col_x + AGE_RIGHT_X - digits_width_mm(&year_text, 7.0),
+                    y,
+                    &year_text,
+                );
+                show_text_at(
+                    ops,
+                    BuiltinFont::HelveticaBold,
+                    7.0,
+                    col_x + TIME_X,
+                    y,
+                    &record.time,
+                );
+                show_text_at(
+                    ops,
+                    BuiltinFont::Helvetica,
+                    7.0,
+                    col_x + NAME_X,
+                    y - RECORD_LINE_H,
+                    &record.team_name,
+                );
             }
             PrintLine::HeatLabel(label) => {
                 show_text_at(ops, BuiltinFont::HelveticaOblique, 7.0, col_x, y, label);
@@ -1076,7 +1190,7 @@ pub fn write_pdf(meet_title: &str, events: &[PrintEvent], path: &Path) -> Result
 mod tests {
     use super::*;
     use crate::merge::MixedHeatSource;
-    use crate::model::{Heat, SeedTime, Swimmer};
+    use crate::model::{Heat, Record, SeedTime, Swimmer};
 
     fn event(number: u32, heats: Vec<Heat>) -> Event {
         Event {
@@ -1086,6 +1200,20 @@ mod tests {
             distance_m: 25,
             stroke: "Freestyle".to_string(),
             heats,
+            record: None,
+        }
+    }
+
+    fn event_with_record(number: u32, heats: Vec<Heat>) -> Event {
+        Event {
+            record: Some(Record {
+                team_acronym: "FO".to_string(),
+                swimmer_name: "Anthony Grimm".to_string(),
+                year: 2011,
+                time: "18.16".to_string(),
+                team_name: "Fair Oaks Sharks".to_string(),
+            }),
+            ..event(number, heats)
         }
     }
 
@@ -1152,7 +1280,8 @@ mod tests {
             date: "Jan 1".to_string(),
             events: vec![event(1, vec![heat(1, 2), heat(2, 2)])],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].heats.len(), 2);
         assert_eq!(events[0].heats[0].heat_label, "Heat 1 of 2");
@@ -1173,7 +1302,8 @@ mod tests {
         consumed.insert((1, 1));
         consumed.insert((2, 1));
 
-        let events = build_print_events(&meet, &consumed, &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &consumed, &[], &no_abbreviations(), 1, false);
+
         // Event 2 has no remaining heats and should be dropped entirely.
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].heats.len(), 1);
@@ -1219,10 +1349,87 @@ mod tests {
             heat_count: 3,
         };
 
-        let events = build_print_events(&meet, &consumed, &[mixed], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &consumed, &[mixed], &no_abbreviations(), 1, false);
+
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
         assert_eq!(events[0].heats[0].heat_label, "Heat 2 of 3");
+    }
+
+    #[test]
+    fn build_print_events_attaches_record_when_show_records_is_true() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event_with_record(1, vec![heat(1, 1)])],
+        };
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, true);
+
+        let record = events[0].record.as_ref().expect("record");
+        assert_eq!(record.team_acronym, "FO");
+        assert_eq!(record.swimmer_name, "Anthony Grimm");
+        assert_eq!(record.year, 2011);
+        assert_eq!(record.time, "18.16");
+        assert_eq!(record.team_name, "Fair Oaks Sharks");
+    }
+
+    #[test]
+    fn build_print_events_omits_record_when_show_records_is_false() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![event_with_record(1, vec![heat(1, 1)])],
+        };
+        let events =
+            build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
+        assert!(events[0].record.is_none());
+    }
+
+    #[test]
+    fn build_print_events_never_attaches_a_record_to_a_mixed_heat_group() {
+        let meet = Meet {
+            title: "Test Meet".to_string(),
+            date: "Jan 1".to_string(),
+            events: vec![
+                event_with_record(1, vec![heat(1, 1)]),
+                event(2, vec![heat(1, 1)]),
+            ],
+        };
+        let mut consumed = HashSet::new();
+        consumed.insert((1, 1));
+        consumed.insert((2, 1));
+
+        let mixed = MixedHeat {
+            header: "#1/2 25m Freestyle".to_string(),
+            sources: vec![
+                MixedHeatSource {
+                    event_number: 1,
+                    heat_number: 1,
+                    gender: "Boys".to_string(),
+                    distance_m: 25,
+                    stroke: "Freestyle".to_string(),
+                    age_group: "10-11".to_string(),
+                },
+                MixedHeatSource {
+                    event_number: 2,
+                    heat_number: 1,
+                    gender: "Boys".to_string(),
+                    distance_m: 25,
+                    stroke: "Freestyle".to_string(),
+                    age_group: "10-11".to_string(),
+                },
+            ],
+            lanes: vec![],
+            heat_index: 1,
+            heat_count: 1,
+        };
+
+        let events = build_print_events(&meet, &consumed, &[mixed], &no_abbreviations(), 1, true);
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
+        assert!(events[0].record.is_none());
     }
 
     fn mixed_source(event_number: u32, heat_number: u32) -> MixedHeatSource {
@@ -1258,7 +1465,8 @@ mod tests {
             })
             .collect();
 
-        let events = build_print_events(&meet, &consumed, &splits, &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &consumed, &splits, &no_abbreviations(), 1, false);
+
         // One event name, shown once, not repeated per split.
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_name, "#1/2 25m Freestyle");
@@ -1429,7 +1637,8 @@ mod tests {
                 vec![heat_with_lanes(1, 2, 60), heat_with_lanes(2, 2, 2)],
             )],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         let chunks = build_chunks(&events);
         let columns = pack_columns(chunks);
 
@@ -1454,7 +1663,8 @@ mod tests {
                 event(2, vec![heat_with_lanes(1, 1, 1)]),
             ],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         let pages = build_timer_pages(&events, 2);
 
         // Lane 1 swims in both events; lane 2 only swims in event 1, but
@@ -1479,7 +1689,8 @@ mod tests {
                 vec![heat_with_lanes(1, 2, 1), heat_with_lanes(2, 2, 1)],
             )],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         let pages = build_timer_pages(&events, 1);
 
         let lane1 = &pages[0];
@@ -1504,7 +1715,8 @@ mod tests {
                 ],
             )],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         let pages = build_timer_pages(&events, 1);
 
         let packed = pack_timer_pages(&pages[0].events, Some(2));
@@ -1533,7 +1745,8 @@ mod tests {
                 ],
             )],
         };
-        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
+
         let pages = build_timer_pages(&events, 1);
 
         let packed = pack_timer_pages(&pages[0].events, Some(2));
@@ -1596,6 +1809,7 @@ mod tests {
                     exhibition: false,
                 }],
             }],
+            record: None,
         };
         write_pdf("Test Meet", &[print_event], &path).expect("write_pdf should succeed");
 
@@ -1637,7 +1851,7 @@ mod tests {
         assert!(issues.is_empty(), "unexpected parse issues: {issues:?}");
 
         let abbreviations = HashMap::new();
-        let events = build_print_events(&meet, &HashSet::new(), &[], &abbreviations, 1);
+        let events = build_print_events(&meet, &HashSet::new(), &[], &abbreviations, 1, true);
         assert_eq!(events.len(), meet.events.len());
 
         let out_path = std::env::temp_dir().join("meetmerger_sample_export.pdf");
@@ -1653,7 +1867,7 @@ mod tests {
 
         let max_event = meet.events.iter().map(|e| e.number).max().unwrap_or(1);
         let rotated_events =
-            build_print_events(&meet, &HashSet::new(), &[], &abbreviations, max_event);
+            build_print_events(&meet, &HashSet::new(), &[], &abbreviations, max_event, true);
         assert_eq!(
             rotated_events[0].event_name,
             events.last().unwrap().event_name

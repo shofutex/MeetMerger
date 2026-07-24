@@ -21,6 +21,20 @@ pub struct Event {
     pub distance_m: u32,
     pub stroke: String,
     pub heats: Vec<Heat>,
+    pub record: Option<Record>,
+}
+
+/// A standing record (meet/pool/etc.) shown under an event's header, before
+/// its heats, in the source heat sheet.
+#[derive(Debug, Clone)]
+pub struct Record {
+    pub team_acronym: String,
+    /// "First Last" order, unlike `Swimmer::{last_name, first_name}` — the
+    /// source heat sheet prints this line differently from the lane rows.
+    pub swimmer_name: String,
+    pub year: u32,
+    pub time: String,
+    pub team_name: String,
 }
 
 #[derive(Debug, Clone)]
