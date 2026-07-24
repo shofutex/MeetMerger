@@ -1,0 +1,4 @@
+# garbled=fixed
+# One line per fix. The left side must match exactly what the tool printed
+# (including the � marker) for an unresolved name/team.
+Gri�n=Griffin
