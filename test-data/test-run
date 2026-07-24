@@ -1,0 +1,1 @@
+cargo run --quiet -- --corrections test-data/sample_heat_sheet.corrections.txt test-data/sample_heat_sheet.pdf

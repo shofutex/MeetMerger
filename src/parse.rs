@@ -288,6 +288,11 @@ fn csv_header_index(headers: &csv::StringRecord, matcher: impl Fn(&str) -> bool)
 /// don't match the expected shape are skipped and reported as issues, same
 /// as unparsed lines from the PDF importer. The CSV has no title/date
 /// header, so the caller supplies a title (typically the file name).
+///
+/// Five more columns are optional: "record team", "record name", "record
+/// year", "record time", "record team name". They only need to be filled in
+/// on one row of an event (any others are blank) — whichever row has all
+/// five non-empty sets that event's record.
 pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
     let mut issues = Vec::new();
     let mut events: BTreeMap<u32, Event> = BTreeMap::new();
@@ -317,7 +322,12 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
     let idx_name = csv_header_index(&headers, |h| h == "name" || h == "swimmer");
     let idx_age = csv_header_index(&headers, |h| h == "age");
     let idx_team = csv_header_index(&headers, |h| h == "team");
-    let idx_time = csv_header_index(&headers, |h| h.contains("time"));
+    let idx_time = csv_header_index(&headers, |h| h.contains("time") && !h.contains("record"));
+    let idx_record_team = csv_header_index(&headers, |h| h == "record team");
+    let idx_record_name = csv_header_index(&headers, |h| h == "record name");
+    let idx_record_year = csv_header_index(&headers, |h| h == "record year");
+    let idx_record_time = csv_header_index(&headers, |h| h == "record time");
+    let idx_record_team_name = csv_header_index(&headers, |h| h == "record team name");
 
     for (row_number, result) in reader.records().enumerate() {
         let line = row_number + 2; // header occupies line 1
@@ -338,6 +348,11 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
         let age_field = field(idx_age);
         let team_field = field(idx_team);
         let time_field = field(idx_time);
+        let record_team_field = field(idx_record_team);
+        let record_name_field = field(idx_record_name);
+        let record_year_field = field(idx_record_year);
+        let record_time_field = field(idx_record_time);
+        let record_team_name_field = field(idx_record_team_name);
 
         let Some(event_caps) = EVENT_RE.captures(event_name) else {
             issues.push(Issue::UnparsedLine {
@@ -364,6 +379,21 @@ pub fn parse_meet_csv(data: &str, title: &str) -> (Meet, Vec<Issue>) {
             heats: Vec::new(),
             record: None,
         });
+
+        if !record_team_field.is_empty()
+            && !record_name_field.is_empty()
+            && !record_year_field.is_empty()
+            && !record_time_field.is_empty()
+            && !record_team_name_field.is_empty()
+        {
+            event.record = Some(Record {
+                team_acronym: record_team_field.to_string(),
+                swimmer_name: record_name_field.to_string(),
+                year: record_year_field.parse().unwrap_or(0),
+                time: record_time_field.to_string(),
+                team_name: record_team_name_field.to_string(),
+            });
+        }
 
         let heat_number: u32 = heat_caps["n"].parse().unwrap_or(0);
         let heat_of: u32 = heat_caps["of"].parse().unwrap_or(0);
@@ -560,5 +590,33 @@ event name,heat,lane,name,age,team,entry time
         let (meet, issues) = parse_meet_csv(data, "My Meet");
         assert!(issues.is_empty());
         assert!(meet.events[0].heats[0].lanes[0].swimmer.is_none());
+    }
+
+    #[test]
+    fn parse_meet_csv_attaches_a_record_from_its_five_optional_columns() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time,record team,record name,record year,record time,record team name
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,1,\"LaPier, Liam\",8,CP Cruisers,27.87,FO,Anthony Grimm,2011,18.16,Fair Oaks Sharks
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,2,\"Doe, Jane\",8,Sharks,28.00,,,,,
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        let record = meet.events[0].record.as_ref().expect("record");
+        assert_eq!(record.team_acronym, "FO");
+        assert_eq!(record.swimmer_name, "Anthony Grimm");
+        assert_eq!(record.year, 2011);
+        assert_eq!(record.time, "18.16");
+        assert_eq!(record.team_name, "Fair Oaks Sharks");
+    }
+
+    #[test]
+    fn parse_meet_csv_leaves_record_none_without_the_optional_columns() {
+        let data = "\
+event name,heat,lane,name,age,team,entry time
+#1 Boys 8 & Under 25m Freestyle,Heat 1 of 1,1,\"LaPier, Liam\",8,CP Cruisers,27.87
+";
+        let (meet, issues) = parse_meet_csv(data, "My Meet");
+        assert!(issues.is_empty(), "unexpected issues: {issues:?}");
+        assert!(meet.events[0].record.is_none());
     }
 }
