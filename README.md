@@ -26,6 +26,8 @@ event name,heat,lane,name,age,team,entry time
 
 The tool will treat a .csv file as a CSV and anything else as a PDF.
 
+Some PDF generation software will do weird things with some characters and so the corrections file will allow for converting those back to readable text. In **most** cases, it won't be needed.
+
 ### Usage:
 Linux:
 ```bash
