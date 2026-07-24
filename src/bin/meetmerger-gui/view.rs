@@ -351,6 +351,15 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
 
     col = col.push(
         row![
+            text("Start a new page before event # on the heat sheet (optional):"),
+            text_input("none", &state.page_break_before_event)
+                .on_input(Message::PageBreakBeforeEventChanged),
+        ]
+        .spacing(12),
+    );
+
+    col = col.push(
+        row![
             text("Heats per page for timer sheets (optional):"),
             text_input("unlimited", &state.heats_per_page).on_input(Message::HeatsPerPageChanged),
         ]

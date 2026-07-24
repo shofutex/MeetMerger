@@ -156,6 +156,10 @@ pub struct PrintEvent {
     pub event_name: String,
     pub heats: Vec<PrintHeat>,
     pub record: Option<PrintRecord>,
+    // The originating event's number — the anchor event's, for a mixed
+    // heat's synthesized block. Used to let the page-break-before-event
+    // option find where to start a fresh page, regardless of rotation.
+    pub number: u32,
 }
 
 pub struct PrintRecord {
@@ -367,6 +371,7 @@ pub fn build_print_events(
                 } else {
                     None
                 },
+                number: event.number,
             });
         }
 
@@ -386,6 +391,7 @@ pub fn build_print_events(
                     event_name: first.header.clone(),
                     heats,
                     record: None,
+                    number: first.anchor_event(),
                 });
             }
         }
@@ -752,6 +758,10 @@ impl PrintLine<'_> {
 // separates one event's heats from the next event's name.
 struct Chunk<'a> {
     lines: Vec<PrintLine<'a>>,
+    // The event number this chunk opens with (the first heat's chunk only),
+    // so pack_columns can find where to force a page break. None for every
+    // other chunk (later heats of the same event, and the trailing gap).
+    starts_event: Option<u32>,
 }
 
 impl Chunk<'_> {
@@ -785,20 +795,43 @@ fn build_chunks(events: &[PrintEvent], show_entry_times: bool) -> Vec<Chunk<'_>>
                     show_entry_times.then(|| swimmer.seed_time.to_string()),
                 ));
             }
-            chunks.push(Chunk { lines });
+            chunks.push(Chunk {
+                lines,
+                starts_event: (index == 0).then_some(event.number),
+            });
         }
         chunks.push(Chunk {
             lines: vec![PrintLine::Gap],
+            starts_event: None,
         });
     }
     chunks
 }
 
-fn pack_columns(chunks: Vec<Chunk<'_>>) -> Vec<Vec<PrintLine<'_>>> {
+// Packs chunks into columns, then (if `page_break_before_event` names an
+// event present in `chunks`) pads the column list with empty columns so
+// that event's opening chunk lands on a fresh page rather than wherever it
+// would otherwise fall — the same trick as inserting a manual page break in
+// a word processor. A page holds COLUMNS columns, so "a fresh page" means
+// the next column index that's a multiple of COLUMNS.
+fn pack_columns(
+    chunks: Vec<Chunk<'_>>,
+    page_break_before_event: Option<u32>,
+) -> Vec<Vec<PrintLine<'_>>> {
     let mut columns: Vec<Vec<PrintLine<'_>>> = Vec::new();
     let mut current: Vec<PrintLine<'_>> = Vec::new();
     let mut used = 0.0f32;
     for chunk in chunks {
+        if chunk.starts_event.is_some() && chunk.starts_event == page_break_before_event {
+            if !current.is_empty() {
+                columns.push(std::mem::take(&mut current));
+                used = 0.0;
+            }
+            while !columns.len().is_multiple_of(COLUMNS) {
+                columns.push(Vec::new());
+            }
+        }
+
         let h = chunk.height();
         if used + h > COLUMN_HEIGHT && !current.is_empty() {
             columns.push(std::mem::take(&mut current));
@@ -1162,10 +1195,11 @@ pub fn write_pdf(
     meet_title: &str,
     events: &[PrintEvent],
     show_entry_times: bool,
+    page_break_before_event: Option<u32>,
     path: &Path,
 ) -> Result<(), String> {
     let chunks = build_chunks(events, show_entry_times);
-    let columns = pack_columns(chunks);
+    let columns = pack_columns(chunks, page_break_before_event);
     let pages: Vec<&[Vec<PrintLine<'_>>]> = if columns.is_empty() {
         vec![&[]]
     } else {
@@ -1663,6 +1697,7 @@ mod tests {
                 }],
             }],
             record: None,
+            number: 1,
         }
     }
 
@@ -1727,7 +1762,7 @@ mod tests {
         let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
 
         let chunks = build_chunks(&events, false);
-        let columns = pack_columns(chunks);
+        let columns = pack_columns(chunks, None);
 
         // Count how many "Heat 2 of 2" heat-label lines land in each column;
         // it must be fully contained in exactly one column, not split.
@@ -1738,6 +1773,81 @@ mod tests {
                 .count();
             assert!(heat2_lines <= 1);
         }
+    }
+
+    #[test]
+    fn pack_columns_pads_to_a_fresh_page_before_the_chosen_event() {
+        // A chunk sized to fill exactly one column by itself, so the next
+        // chunk naturally starts a fresh column even without a forced break.
+        let filler_lines = (COLUMN_HEIGHT / EVENT_GAP_H).ceil() as usize;
+        let full_column_chunk = Chunk {
+            lines: (0..filler_lines).map(|_| PrintLine::Gap).collect(),
+            starts_event: Some(1),
+        };
+        let small_chunk = |n: u32| Chunk {
+            lines: vec![PrintLine::Gap],
+            starts_event: Some(n),
+        };
+
+        let chunks = vec![full_column_chunk, small_chunk(2), small_chunk(3)];
+        let columns = pack_columns(chunks, Some(2));
+
+        // Event 1 fills column 0 alone. Event 2 must be pushed to the next
+        // page (the next column index that's a multiple of COLUMNS), so
+        // columns 1 and 2 are blank padding; event 3 continues right after
+        // event 2, since both are tiny enough to share that column.
+        assert_eq!(columns.len(), 4);
+        assert!(columns[1].is_empty());
+        assert!(columns[2].is_empty());
+        assert_eq!(columns[3].len(), 2);
+    }
+
+    #[test]
+    fn pack_columns_ignores_a_page_break_event_that_never_appears() {
+        let chunks = vec![
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(1),
+            },
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(2),
+            },
+        ];
+        let with_break = pack_columns(chunks, Some(99));
+
+        let chunks = vec![
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(1),
+            },
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(2),
+            },
+        ];
+        let without_break = pack_columns(chunks, None);
+
+        assert_eq!(with_break.len(), without_break.len());
+    }
+
+    #[test]
+    fn pack_columns_breaking_before_the_first_event_wastes_no_leading_page() {
+        let chunks = vec![
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(1),
+            },
+            Chunk {
+                lines: vec![PrintLine::Gap],
+                starts_event: Some(2),
+            },
+        ];
+        let columns = pack_columns(chunks, Some(1));
+
+        // Breaking before the very first chunk shouldn't insert a blank
+        // leading page -- there's nothing before it to push off the page.
+        assert_eq!(columns.len(), 1);
     }
 
     #[test]
@@ -1898,8 +2008,9 @@ mod tests {
                 }],
             }],
             record: None,
+            number: 1,
         };
-        write_pdf("Test Meet", &[print_event], false, &path).expect("write_pdf should succeed");
+        write_pdf("Test Meet", &[print_event], false, None, &path).expect("write_pdf should succeed");
 
         let bytes = std::fs::read(&path).expect("file should exist");
         assert!(bytes.starts_with(b"%PDF-"));
@@ -1943,7 +2054,7 @@ mod tests {
         assert_eq!(events.len(), meet.events.len());
 
         let out_path = std::env::temp_dir().join("meetmerger_sample_export.pdf");
-        write_pdf(&meet.title, &events, true, &out_path).expect("write_pdf should succeed");
+        write_pdf(&meet.title, &events, true, None, &out_path).expect("write_pdf should succeed");
         let bytes = std::fs::read(&out_path).expect("file should exist");
         assert!(bytes.starts_with(b"%PDF-"));
         println!(

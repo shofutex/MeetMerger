@@ -37,6 +37,7 @@ pub struct Wizard {
 
     pub meet_title: String,
     pub export_start_event: String,
+    pub page_break_before_event: String,
     pub team_abbreviations: HashMap<String, String>,
     pub show_records: bool,
     pub show_entry_times: bool,
@@ -75,6 +76,7 @@ pub enum Message {
     RenameMixedHeat(usize, String),
 
     StartEventChanged(String),
+    PageBreakBeforeEventChanged(String),
     GoToTeamAbbreviations,
     BackToFinalPreview,
     TeamAbbreviationChanged(String, String),

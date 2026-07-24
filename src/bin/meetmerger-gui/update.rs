@@ -121,6 +121,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             state.export_start_event = value;
             Task::none()
         }
+        Message::PageBreakBeforeEventChanged(value) => {
+            state.page_break_before_event = value;
+            Task::none()
+        }
         Message::GoToTeamAbbreviations => {
             state.step = Step::TeamAbbreviations;
             Task::none()
@@ -162,6 +166,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             };
             meet.title = state.meet_title.clone();
             let start_event = state.export_start_event.trim().parse().unwrap_or(1);
+            let page_break_before_event = state.page_break_before_event.trim().parse().ok();
             state.is_exporting = true;
             Task::perform(
                 dialog::export_pdf(
@@ -172,6 +177,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
                     start_event,
                     state.show_records,
                     state.show_entry_times,
+                    page_break_before_event,
                     path,
                 ),
                 Message::PdfExported,
