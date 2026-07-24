@@ -1,0 +1,511 @@
+event name,heat,lane,name,age,team,entry time
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,1,—,,,
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,2,—,,,
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,3,—,,,
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,4,—,,,
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,5,"Osgood, Zoe",6,Dolphins,37.97
+#1 Boys 6 & Under 25m Freestyle,Heat 1 of 1,6,"Carver, Josie",6,Dolphins,1:00.43
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,1,"Underhill, Otto",4,Sharks,57.56
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,2,"Xander, Wyatt",4,Sharks,1:04.15
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,3,"Osgood, Nova",5,Dolphins,44.75
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,4,—,,,
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,5,—,,,
+#2 Girls 6 & Under 25m Freestyle,Heat 1 of 1,6,—,,,
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,1,—,,,
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,2,"Hargrove, Opal",7,Sharks,57.93
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,3,"Norwood, Arlo",7,Sharks,40.66
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,4,"Garrity, Leo",7,Sharks,53.43
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,5,—,,,
+#3 Boys 7-8 25m Freestyle,Heat 1 of 2,6,—,,,
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,1,—,,,
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,2,"Redwood, Silas",7,Dolphins,33.97
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,3,"Bennett, Wren",7,Sharks,33.21
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,4,"Osgood, Rex",7,Sharks,35.72
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,5,"Bennett, Ivy",8,Dolphins,36.52
+#3 Boys 7-8 25m Freestyle,Heat 2 of 2,6,—,,,
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,1,—,,,
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,2,"Jansen, Piper",7,Sharks,NT
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,3,"Hargrove, Beau",7,Sharks,58.11
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,4,"Delgado, Mia",8,Sharks,1:04.10
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,5,—,,,
+#4 Girls 7-8 25m Freestyle,Heat 1 of 2,6,—,,,
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,1,"Lindqvist, Dahlia",8,Dolphins,40.37
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,2,"Jansen, Kai",7,Sharks,36.15
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,3,"Cassidy, Luna EXH",7,Sharks,28.92
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,4,"Vance, Kai EXH",7,Dolphins,28.56
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,5,"Larkspur, Noah",7,Sharks,35.80
+#4 Girls 7-8 25m Freestyle,Heat 2 of 2,6,"Holloway, Jonah",8,Sharks,46.21
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,1,—,,,
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,2,"Donovan, Finn",10,Sharks,1:33.43
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,3,"Ashby, Dahlia",9,Dolphins,1:20.38
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,4,"Marchetti, Ruby",9,Sharks,1:22.21
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,5,—,,,
+#5 Boys 9-10 50m Freestyle,Heat 1 of 2,6,—,,,
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,1,"Holloway, Ruby",10,Sharks,1:13.78
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,2,"Donovan, Emmett",10,Dolphins,1:04.08
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,3,"Tanaka, Zoe EXH",9,Dolphins,50.73
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,4,"Xander, Marlowe",10,Dolphins,59.53
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,5,"Donovan, Opal",10,Sharks,59.70
+#5 Boys 9-10 50m Freestyle,Heat 2 of 2,6,"Jansen, Arlo",9,Dolphins,1:15.98
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,1,"Kingsley, Owen",9,Dolphins,1:40.47
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,2,"Mercer, Ethan",10,Sharks,1:33.06
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,3,"Ibarra, Piper",10,Sharks,1:14.74
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,4,"Ibarra, Sable",10,Sharks,1:26.42
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,5,"Osgood, Gus",10,Sharks,1:31.47
+#6 Girls 9-10 50m Freestyle,Heat 1 of 3,6,—,,,
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,1,"Hargrove, Dahlia",9,Dolphins,1:02.76
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,2,"Garrity, Hugo",10,Sharks,59.19
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,3,"Ekstrom, Mia EXH",10,Sharks,58.20
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,4,"Kessler, Emmett",10,Sharks,56.28
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,5,"Fontaine, Wren",9,Dolphins,1:11.19
+#6 Girls 9-10 50m Freestyle,Heat 2 of 3,6,"Fontaine, Wren",10,Dolphins,1:17.06
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,1,"Lindqvist, Nova EXH",10,Dolphins,59.07
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,2,"Marchetti, Poppy EXH",9,Dolphins,51.52
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,3,"Ibarra, Jonah EXH",9,Sharks,53.06
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,4,"Novak, Owen",9,Sharks,50.70
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,5,"Carver, Otto EXH",10,Dolphins,57.98
+#6 Girls 9-10 50m Freestyle,Heat 3 of 3,6,"Zephyr, Opal",10,Dolphins,52.67
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,1,"Grier, Marlowe",12,Sharks,1:16.84
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,2,"Norwood, Asher",12,Dolphins,1:01.72
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,3,"Brennan, Hugo",12,Sharks,1:03.83
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,4,"Marchetti, Ivy",12,Dolphins,1:06.56
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,5,"Holloway, Theo",12,Sharks,1:08.61
+#7 Boys 11-12 50m Freestyle,Heat 1 of 3,6,"Ellison, Sadie",12,Dolphins,1:11.94
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,1,"Ellison, Elsie",11,Dolphins,59.41
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,2,"Ekstrom, Luna",12,Sharks,58.28
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,3,"Ellison, Vera",11,Dolphins,58.21
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,4,"Grier, Piper",12,Sharks,56.05
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,5,"Farrow, Mia",11,Sharks,1:01.00
+#7 Boys 11-12 50m Freestyle,Heat 2 of 3,6,"Mercer, Mia",12,Dolphins,56.38
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,1,"Bennett, Sable",11,Sharks,54.02
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,2,"Bennett, Leo EXH",11,Sharks,50.18
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,3,"Yardley, Dahlia EXH",11,Dolphins,39.15
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,4,"Isley, Vera EXH",11,Sharks,40.98
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,5,"Larkspur, Liam",11,Sharks,48.04
+#7 Boys 11-12 50m Freestyle,Heat 3 of 3,6,"Xander, Wyatt",11,Dolphins,57.28
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,1,"Whitfield, Luna",11,Sharks,1:27.96
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,2,"Donovan, Tessa",11,Dolphins,1:11.08
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,3,"Ekstrom, Max",11,Sharks,58.22
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,4,"Kessler, Ava",11,Sharks,1:16.05
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,5,"Zephyr, Wren",12,Sharks,1:22.99
+#8 Girls 11-12 50m Freestyle,Heat 1 of 3,6,—,,,
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,1,"Jansen, Max",12,Sharks,1:00.45
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,2,"Hargrove, Jonah",11,Dolphins,56.12
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,3,"Farrow, Ivy",12,Dolphins,58.64
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,4,"Marchetti, Elsie",12,Dolphins,58.24
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,5,"Jansen, Liam",11,Dolphins,57.91
+#8 Girls 11-12 50m Freestyle,Heat 2 of 3,6,"Kingsley, Arlo",11,Sharks,1:02.29
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,1,"Mercer, Luna",11,Sharks,49.58
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,2,"Norwood, Beau",11,Dolphins,46.93
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,3,"Xander, Gus EXH",12,Dolphins,43.58
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,4,"Kingsley, Junie",12,Dolphins,51.50
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,5,"Fontaine, Sadie",11,Dolphins,54.54
+#8 Girls 11-12 50m Freestyle,Heat 3 of 3,6,"Ashby, Nova",11,Dolphins,57.22
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,1,—,,,
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,2,"Mercer, Otto",16,Dolphins,50.04
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,3,"Yardley, Jonah",13,Dolphins,47.22
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,4,"Prescott, Dahlia",15,Dolphins,50.26
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,5,—,,,
+#9 Boys 13 & Over 50m Freestyle,Heat 1 of 4,6,—,,,
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,1,—,,,
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,2,"Kessler, Liam",13,Sharks,48.07
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,3,"Lindqvist, Cole",13,Sharks,42.76
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,4,"Sorensen, Ruby",14,Sharks,48.22
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,5,"Norwood, Emmett",19,Sharks,45.02
+#9 Boys 13 & Over 50m Freestyle,Heat 2 of 4,6,—,,,
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,1,"Kessler, Liam",15,Dolphins,44.37
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,2,"Ellison, Silas",13,Dolphins,42.36
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,3,"Delgado, Cole",16,Sharks,38.50
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,4,"Xander, Junie",18,Dolphins,38.39
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,5,"Kessler, Sable",18,Dolphins,43.91
+#9 Boys 13 & Over 50m Freestyle,Heat 3 of 4,6,"Ekstrom, Otto",18,Sharks,43.61
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,1,"Oxley, Kai",16,Dolphins,42.41
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,2,"Prescott, Arlo",16,Sharks,36.95
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,3,"Isley, Piper EXH",15,Dolphins,34.11
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,4,"Osgood, Wren EXH",19,Dolphins,36.41
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,5,"Norwood, Rex",17,Sharks,38.11
+#9 Boys 13 & Over 50m Freestyle,Heat 4 of 4,6,"Lindqvist, Asher EXH",13,Dolphins,39.34
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,1,—,,,
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,2,"Grier, Sable",19,Dolphins,NT
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,3,"Donovan, Maren",19,Sharks,54.34
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,4,"Kessler, Poppy",15,Dolphins,53.87
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,5,—,,,
+#10 Girls 13 & Over 50m Freestyle,Heat 1 of 4,6,—,,,
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,1,—,,,
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,2,"Ibarra, Gus",14,Dolphins,49.86
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,3,"Ashby, Kai",15,Dolphins,50.24
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,4,"Lindqvist, Arlo",17,Sharks,52.94
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,5,"Norwood, Eli",15,Sharks,48.99
+#10 Girls 13 & Over 50m Freestyle,Heat 2 of 4,6,"Ekstrom, Liam",13,Dolphins,42.35
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,1,"Farrow, Noah",16,Dolphins,47.87
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,2,"Norwood, Leo",19,Dolphins,45.70
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,3,"Yardley, Emmett",16,Sharks,49.28
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,4,"Redwood, Nova",17,Sharks,49.06
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,5,"Underhill, Freya",19,Sharks,47.66
+#10 Girls 13 & Over 50m Freestyle,Heat 3 of 4,6,"Ekstrom, Owen",17,Sharks,47.77
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,1,"Whitfield, Sadie",13,Dolphins,46.46
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,2,"Quimby, Sable EXH",16,Sharks,42.94
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,3,"Ibarra, Dahlia EXH",14,Dolphins,42.24
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,4,"Underhill, Dahlia",19,Sharks,44.90
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,5,"Farrow, Rex EXH",14,Dolphins,41.89
+#10 Girls 13 & Over 50m Freestyle,Heat 4 of 4,6,"Marchetti, Otto",13,Sharks,44.28
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,1,—,,,
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,2,—,,,
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,3,—,,,
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,4,"Carver, Josie",5,Dolphins,NT
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,5,—,,,
+#11 Boys 6 & Under 25m Backstroke,Heat 1 of 1,6,—,,,
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,1,—,,,
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,2,—,,,
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,3,"Xander, Wyatt",5,Sharks,1:09.73
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,4,—,,,
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,5,—,,,
+#12 Girls 6 & Under 25m Backstroke,Heat 1 of 1,6,—,,,
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,1,"Yardley, Max",7,Sharks,NT
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,2,"Ellison, Kai",7,Sharks,41.58
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,3,"Garrity, Emmett",8,Sharks,39.26
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,4,"Redwood, Silas",8,Dolphins,45.07
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,5,"Garrity, Leo",7,Sharks,1:32.50
+#13 Boys 7-8 25m Backstroke,Heat 1 of 1,6,—,,,
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,1,—,,,
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,2,"Hargrove, Beau",8,Sharks,1:40.51
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,3,"Whitfield, Ava",7,Dolphins,59.87
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,4,"Delgado, Mia",8,Sharks,1:04.45
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,5,"Jansen, Piper",7,Sharks,NT
+#14 Girls 7-8 25m Backstroke,Heat 1 of 2,6,—,,,
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,1,"Lindqvist, Dahlia",8,Dolphins,43.45
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,2,"Jansen, Kai",8,Sharks,41.17
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,3,"Cassidy, Luna",7,Sharks,33.96
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,4,"Mercer, Vera",7,Sharks,43.60
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,5,"Grier, Elsie",8,Dolphins,43.77
+#14 Girls 7-8 25m Backstroke,Heat 2 of 2,6,"Sorensen, Arlo",7,Sharks,53.70
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,1,—,,,
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,2,"Whitfield, Beau",10,Dolphins,NT
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,3,"Ibarra, Dean",9,Dolphins,1:32.89
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,4,"Carver, Eli",10,Sharks,1:41.36
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,5,—,,,
+#15 Boys 9-10 50m Backstroke,Heat 1 of 2,6,—,,,
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,1,—,,,
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,2,"Grier, Ethan",9,Sharks,1:26.44
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,3,"Ibarra, Sadie EXH",10,Sharks,59.28
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,4,"Isley, Josie EXH",10,Dolphins,58.23
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,5,"Xander, Marlowe",10,Dolphins,1:25.63
+#15 Boys 9-10 50m Backstroke,Heat 2 of 2,6,—,,,
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,1,—,,,
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,2,"Kingsley, Owen",10,Dolphins,NT
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,3,"Ibarra, Sable",9,Sharks,1:49.55
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,4,"Fontaine, Wren",9,Dolphins,NT
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,5,"Norwood, Nora",9,Dolphins,NT
+#16 Girls 9-10 50m Backstroke,Heat 1 of 3,6,—,,,
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,1,—,,,
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,2,"Hargrove, Hugo",10,Dolphins,1:34.41
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,3,"Marchetti, Eli",10,Sharks,1:23.32
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,4,"Fontaine, Wren",10,Dolphins,1:29.69
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,5,"Ibarra, Piper",10,Sharks,1:44.69
+#16 Girls 9-10 50m Backstroke,Heat 2 of 3,6,—,,,
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,1,"Larkspur, Gus",9,Dolphins,1:24.46
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,2,"Bennett, Theo",10,Dolphins,1:07.51
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,3,"Carver, Otto EXH",9,Dolphins,1:04.36
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,4,"Ibarra, Jonah",9,Sharks,1:11.97
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,5,"Garrity, Hugo EXH",9,Sharks,1:13.36
+#16 Girls 9-10 50m Backstroke,Heat 3 of 3,6,"Osgood, Wren",9,Sharks,1:27.19
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,1,—,,,
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,2,"Ellison, Sadie",11,Dolphins,1:38.72
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,3,"Hargrove, Zoe",11,Sharks,1:30.43
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,4,"Holloway, Theo",12,Sharks,1:26.07
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,5,—,,,
+#17 Boys 11-12 50m Backstroke,Heat 1 of 3,6,—,,,
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,1,—,,,
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,2,"Farrow, Mia",12,Sharks,1:26.80
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,3,"Novak, Sadie",12,Dolphins,1:06.50
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,4,"Holloway, Gus",11,Dolphins,1:18.26
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,5,"Grier, Marlowe",12,Sharks,1:19.58
+#17 Boys 11-12 50m Backstroke,Heat 2 of 3,6,—,,,
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,1,"Norwood, Max",12,Dolphins,59.47
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,2,"Larkspur, Liam EXH",12,Sharks,1:03.22
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,3,"Farrow, Nina EXH",12,Dolphins,59.59
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,4,"Isley, Vera EXH",11,Sharks,55.95
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,5,"Bennett, Sable",11,Sharks,1:06.40
+#17 Boys 11-12 50m Backstroke,Heat 3 of 3,6,"Redwood, Opal",12,Sharks,1:14.42
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,1,—,,,
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,2,"Whitfield, Luna",12,Sharks,1:33.90
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,3,"Jansen, Max",11,Sharks,1:06.88
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,4,"Kessler, Sable",12,Sharks,1:12.14
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,5,—,,,
+#18 Girls 11-12 50m Backstroke,Heat 1 of 2,6,—,,,
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,1,"Prescott, Theo",11,Sharks,1:08.18
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,2,"Kingsley, Junie",12,Dolphins,58.83
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,3,"Holloway, Emmett EXH",11,Dolphins,51.36
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,4,"Ibarra, Junie",12,Dolphins,57.00
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,5,"Cassidy, Silas",12,Sharks,55.01
+#18 Girls 11-12 50m Backstroke,Heat 2 of 2,6,—,,,
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,1,"Lindqvist, Cole",13,Sharks,1:07.63
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,2,"Brennan, Theo",13,Sharks,54.72
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,3,"Sorensen, Leo",14,Dolphins,52.17
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,4,"Yardley, Jonah",19,Dolphins,56.23
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,5,"Sorensen, Ruby",13,Sharks,1:02.89
+#19 Boys 13 & Over 50m Backstroke,Heat 1 of 3,6,"Mercer, Otto",16,Dolphins,1:01.97
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,1,"Larkspur, Zoe",14,Sharks,49.90
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,2,"Ellison, Silas",19,Dolphins,51.51
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,3,"Osgood, Poppy",13,Dolphins,47.85
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,4,"Jorgensen, Rhys EXH",14,Dolphins,45.15
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,5,"Norwood, Emmett",17,Sharks,51.39
+#19 Boys 13 & Over 50m Backstroke,Heat 2 of 3,6,"Ekstrom, Otto EXH",18,Sharks,54.95
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,1,"Oxley, Kai",19,Dolphins,40.41
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,2,"Prescott, Arlo",16,Sharks,43.80
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,3,"Isley, Piper EXH",15,Dolphins,35.78
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,4,"Osgood, Wren EXH",13,Dolphins,41.29
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,5,"Sorensen, Ethan EXH",16,Dolphins,38.94
+#19 Boys 13 & Over 50m Backstroke,Heat 3 of 3,6,"Norwood, Rex",14,Sharks,42.56
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,1,"Donovan, Maren",16,Sharks,NT
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,2,"Marchetti, Liam",19,Dolphins,1:02.16
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,3,"Redwood, Maren",18,Sharks,59.14
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,4,"Marchetti, Poppy",13,Sharks,1:06.03
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,5,"Yardley, Luna",18,Dolphins,1:16.95
+#20 Girls 13 & Over 50m Backstroke,Heat 1 of 2,6,—,,,
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,1,"Donovan, Asher",15,Dolphins,58.51
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,2,"Osgood, Dean",15,Dolphins,47.72
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,3,"Ekstrom, Junie EXH",14,Dolphins,45.28
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,4,"Ibarra, Nora EXH",19,Dolphins,44.87
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,5,"Bennett, Wyatt",14,Dolphins,51.89
+#20 Girls 13 & Over 50m Backstroke,Heat 2 of 2,6,"Ashby, Kai",19,Dolphins,57.91
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,1,—,,,
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,2,"Osgood, Zoe",4,Dolphins,NT
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,3,—,,,
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,4,—,,,
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,5,—,,,
+#21 Boys 6 & Under 25m Breaststroke,Heat 1 of 1,6,—,,,
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,1,—,,,
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,2,—,,,
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,3,"Osgood, Nova",6,Dolphins,1:08.27
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,4,"Underhill, Otto",4,Sharks,NT
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,5,—,,,
+#22 Girls 6 & Under 25m Breaststroke,Heat 1 of 1,6,—,,,
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,1,—,,,
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,2,"Garrity, Emmett",7,Sharks,53.06
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,3,"Bennett, Wren EXH",7,Sharks,46.57
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,4,"Norwood, Arlo EXH",7,Sharks,51.96
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,5,"Yardley, Max",8,Sharks,NT
+#23 Boys 7-8 25m Breaststroke,Heat 1 of 1,6,—,,,
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,1,"Sorensen, Arlo",7,Sharks,53.54
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,2,"Mercer, Vera",8,Sharks,43.32
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,3,"Vance, Kai EXH",8,Dolphins,39.96
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,4,"Brennan, Arlo EXH",7,Dolphins,38.44
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,5,"Hargrove, Max EXH",7,Sharks,50.61
+#24 Girls 7-8 25m Breaststroke,Heat 1 of 1,6,"Grier, Elsie",8,Dolphins,56.99
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,1,—,,,
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,2,"Ibarra, Dean",10,Dolphins,2:02.37
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,3,"Whitfield, Beau",9,Dolphins,1:43.30
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,4,"Grier, Ethan",10,Sharks,2:01.69
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,5,"Donovan, Finn",9,Sharks,NT
+#25 Boys 9-10 50m Breaststroke,Heat 1 of 2,6,—,,,
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,1,"Ashby, Dahlia",9,Dolphins,1:33.85
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,2,"Donovan, Emmett",9,Dolphins,1:18.48
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,3,"Tanaka, Zoe EXH",9,Dolphins,1:07.36
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,4,"Ibarra, Sadie",10,Sharks,1:11.07
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,5,"Isley, Josie EXH",10,Dolphins,1:11.45
+#25 Boys 9-10 50m Breaststroke,Heat 2 of 2,6,"Jansen, Arlo",9,Dolphins,1:52.76
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,1,—,,,
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,2,"Mercer, Ethan",10,Sharks,1:53.84
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,3,"Larkspur, Gus",10,Dolphins,1:31.52
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,4,"Osgood, Wren",10,Sharks,1:30.99
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,5,"Osgood, Gus",10,Sharks,2:19.80
+#26 Girls 9-10 50m Breaststroke,Heat 1 of 2,6,—,,,
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,1,"Hargrove, Dahlia",9,Dolphins,1:22.82
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,2,"Carver, Zoe",9,Sharks,1:30.30
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,3,"Norwood, Liam EXH",10,Dolphins,1:19.46
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,4,"Kessler, Emmett",10,Sharks,1:15.45
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,5,"Bennett, Theo",10,Dolphins,1:29.81
+#26 Girls 9-10 50m Breaststroke,Heat 2 of 2,6,"Zephyr, Opal",10,Dolphins,1:23.62
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,1,—,,,
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,2,"Holloway, Gus",11,Dolphins,1:21.80
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,3,"Brennan, Hugo",11,Sharks,1:26.50
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,4,"Hargrove, Zoe",12,Sharks,1:33.02
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,5,—,,,
+#27 Boys 11-12 50m Breaststroke,Heat 1 of 3,6,—,,,
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,1,"Marchetti, Ivy",12,Dolphins,1:12.99
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,2,"Mercer, Mia",12,Dolphins,1:23.87
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,3,"Ellison, Vera",12,Dolphins,1:14.25
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,4,"Ellison, Elsie",12,Dolphins,1:13.82
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,5,"Xander, Wyatt",12,Dolphins,1:17.22
+#27 Boys 11-12 50m Breaststroke,Heat 2 of 3,6,"Norwood, Asher",12,Dolphins,1:20.05
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,1,"Vance, Freya",12,Dolphins,1:07.62
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,2,"Grier, Freya EXH",11,Dolphins,1:10.39
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,3,"Yardley, Dahlia EXH",11,Dolphins,51.81
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,4,"Whitfield, Josie EXH",12,Dolphins,56.04
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,5,"Bennett, Leo EXH",11,Sharks,1:02.17
+#27 Boys 11-12 50m Breaststroke,Heat 3 of 3,6,"Novak, Sadie",12,Dolphins,1:15.47
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,1,"Donovan, Tessa",11,Dolphins,1:21.96
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,2,"Prescott, Theo",11,Sharks,1:24.37
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,3,"Mercer, Luna",12,Sharks,1:11.46
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,4,"Jansen, Liam",11,Dolphins,1:15.82
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,5,"Hargrove, Jonah",12,Dolphins,1:21.53
+#28 Girls 11-12 50m Breaststroke,Heat 1 of 2,6,"Kessler, Ava",11,Sharks,1:38.11
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,1,"Fontaine, Sadie",12,Dolphins,1:13.13
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,2,"Cassidy, Silas",12,Sharks,1:05.14
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,3,"Ashby, Nova",12,Dolphins,57.38
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,4,"Ibarra, Junie",12,Dolphins,1:04.73
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,5,"Sorensen, Dahlia",12,Sharks,1:07.70
+#28 Girls 11-12 50m Breaststroke,Heat 2 of 2,6,"Farrow, Ivy",12,Dolphins,1:10.66
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,1,"Brennan, Theo",16,Sharks,1:06.92
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,2,"Kessler, Liam",13,Sharks,1:04.04
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,3,"Sorensen, Nina",15,Dolphins,1:01.43
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,4,"Sorensen, Leo",16,Dolphins,56.05
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,5,"Prescott, Dahlia",19,Dolphins,1:03.10
+#29 Boys 13 & Over 50m Breaststroke,Heat 1 of 2,6,—,,,
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,1,"Xander, Junie",18,Dolphins,54.34
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,2,"Vance, Rhys",14,Sharks,59.03
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,3,"Lindqvist, Asher EXH",19,Dolphins,56.87
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,4,"Kessler, Sable",18,Dolphins,57.61
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,5,"Kessler, Liam",13,Dolphins,53.95
+#29 Boys 13 & Over 50m Breaststroke,Heat 2 of 2,6,"Larkspur, Zoe",19,Sharks,56.26
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,1,"Grier, Sable",15,Dolphins,NT
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,2,"Yardley, Luna",19,Dolphins,1:08.37
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,3,"Norwood, Eli",13,Sharks,1:09.49
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,4,—,,,
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,5,—,,,
+#30 Girls 13 & Over 50m Breaststroke,Heat 1 of 3,6,—,,,
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,1,—,,,
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,2,"Underhill, Junie",15,Dolphins,1:11.05
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,3,"Marchetti, Liam",15,Dolphins,1:09.57
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,4,"Marchetti, Otto",19,Sharks,1:12.00
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,5,"Ekstrom, Owen",14,Sharks,1:10.22
+#30 Girls 13 & Over 50m Breaststroke,Heat 2 of 3,6,"Ekstrom, Liam",16,Dolphins,1:03.27
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,1,"Marchetti, Nova EXH",16,Dolphins,57.82
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,2,"Quimby, Sable",15,Sharks,1:00.42
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,3,"Farrow, Rex EXH",19,Dolphins,56.71
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,4,"Prescott, Gus EXH",16,Dolphins,49.14
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,5,"Holloway, Ava EXH",15,Sharks,54.46
+#30 Girls 13 & Over 50m Breaststroke,Heat 3 of 3,6,"Underhill, Freya",17,Sharks,1:04.89
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,1,—,,,
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,2,—,,,
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,3,—,,,
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,4,"Osgood, Rex",4,Sharks,NT
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,5,"Ellison, Kai EXH",6,Sharks,58.83
+#31 Boys 8 & Under 25m Butterfly,Heat 1 of 1,6,"Hargrove, Opal",8,Sharks,NT
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,1,"Whitfield, Ava",4,Dolphins,NT
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,2,"Hargrove, Max",7,Sharks,56.15
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,3,"Brennan, Arlo EXH",5,Dolphins,39.22
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,4,"Larkspur, Noah",6,Sharks,56.11
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,5,"Holloway, Jonah",6,Sharks,1:15.34
+#32 Girls 8 & Under 25m Butterfly,Heat 1 of 1,6,—,,,
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,1,—,,,
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,2,"Carver, Eli",9,Sharks,NT
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,3,"Marchetti, Ruby",9,Sharks,57.63
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,4,"Jansen, Arlo",10,Dolphins,55.91
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,5,—,,,
+#33 Boys 9-10 25m Butterfly,Heat 1 of 2,6,—,,,
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,1,—,,,
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,2,"Whitfield, Kai",9,Sharks,43.33
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,3,"Ellison, Finn EXH",10,Dolphins,29.34
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,4,"Donovan, Opal EXH",10,Sharks,30.49
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,5,"Ibarra, Dean",10,Dolphins,48.58
+#33 Boys 9-10 25m Butterfly,Heat 2 of 2,6,—,,,
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,1,"Hargrove, Hugo",9,Dolphins,NT
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,2,"Fontaine, Wren",10,Dolphins,36.23
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,3,"Carver, Zoe",9,Sharks,NT
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,4,"Norwood, Nora",10,Dolphins,NT
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,5,—,,,
+#34 Girls 9-10 25m Butterfly,Heat 1 of 2,6,—,,,
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,1,"Marchetti, Eli",10,Sharks,36.66
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,2,"Lindqvist, Nova EXH",10,Dolphins,29.30
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,3,"Novak, Owen EXH",9,Sharks,24.88
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,4,"Norwood, Liam EXH",9,Dolphins,27.73
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,5,"Ekstrom, Mia EXH",9,Sharks,31.27
+#34 Girls 9-10 25m Butterfly,Heat 2 of 2,6,—,,,
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,1,—,,,
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,2,—,,,
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,3,—,,,
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,4,"Redwood, Opal",11,Sharks,1:18.31
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,5,"Grier, Freya EXH",11,Dolphins,47.66
+#35 Boys 11-12 50m Butterfly,Heat 1 of 1,6,"Norwood, Max",12,Dolphins,1:12.80
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,1,"Ekstrom, Max",12,Sharks,1:23.29
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,2,"Zephyr, Wren",12,Sharks,NT
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,3,"Kessler, Sable",12,Sharks,1:17.72
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,4,—,,,
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,5,—,,,
+#36 Girls 11-12 50m Butterfly,Heat 1 of 2,6,—,,,
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,1,"Sorensen, Sable",11,Sharks,1:14.22
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,2,"Sorensen, Dahlia",12,Sharks,1:24.89
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,3,"Xander, Gus EXH",11,Dolphins,52.19
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,4,"Marchetti, Elsie",11,Dolphins,1:19.95
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,5,"Kingsley, Arlo",12,Sharks,1:25.43
+#36 Girls 11-12 50m Butterfly,Heat 2 of 2,6,—,,,
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,1,"Sorensen, Nina",15,Dolphins,51.39
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,2,"Delgado, Cole",17,Sharks,47.51
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,3,"Sorensen, Ethan EXH",18,Dolphins,36.09
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,4,"Ashby, Owen EXH",16,Dolphins,39.66
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,5,"Vance, Rhys",18,Sharks,50.93
+#37 Boys 13 & Over 50m Butterfly,Heat 1 of 1,6,—,,,
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,1,—,,,
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,2,"Underhill, Junie",13,Dolphins,55.41
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,3,"Yardley, Emmett",15,Sharks,53.45
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,4,"Farrow, Noah",13,Dolphins,1:02.35
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,5,"Ibarra, Gus",16,Dolphins,55.82
+#38 Girls 13 & Over 50m Butterfly,Heat 1 of 2,6,—,,,
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,1,"Redwood, Nova EXH",15,Sharks,49.07
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,2,"Underhill, Dahlia",18,Sharks,48.31
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,3,"Ibarra, Dahlia EXH",16,Dolphins,44.37
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,4,"Ekstrom, Junie EXH",13,Dolphins,47.72
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,5,"Osgood, Dean",13,Dolphins,48.22
+#38 Girls 13 & Over 50m Butterfly,Heat 2 of 2,6,"Donovan, Asher",18,Dolphins,48.15
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,1,"Garrity, Emmett",7,Sharks,3:28.75
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,2,"Holloway, Ruby",7,Sharks,2:35.61
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,3,"Ibarra, Sadie",9,Sharks,2:09.10
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,4,"Ellison, Finn",7,Dolphins,2:39.06
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,5,"Donovan, Opal",9,Sharks,2:49.47
+#39 Boys 10 & Under 100m IM,Heat 1 of 1,6,"Grier, Ethan",8,Sharks,NT
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,1,"Cassidy, Luna",10,Sharks,NT
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,2,"Osgood, Wren",7,Sharks,2:53.44
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,3,"Ibarra, Jonah",6,Sharks,2:19.94
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,4,"Kessler, Emmett",7,Sharks,2:41.72
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,5,"Mercer, Vera",9,Sharks,3:45.49
+#40 Girls 10 & Under 100m IM,Heat 1 of 1,6,"Hargrove, Max",7,Sharks,NT
+#41 Boys 11-12 100m IM,Heat 1 of 2,1,"Ellison, Elsie",12,Dolphins,NT
+#41 Boys 11-12 100m IM,Heat 1 of 2,2,"Norwood, Max",12,Dolphins,NT
+#41 Boys 11-12 100m IM,Heat 1 of 2,3,"Holloway, Gus",11,Dolphins,3:01.88
+#41 Boys 11-12 100m IM,Heat 1 of 2,4,"Novak, Sadie",12,Dolphins,NT
+#41 Boys 11-12 100m IM,Heat 1 of 2,5,"Farrow, Nina",12,Dolphins,NT
+#41 Boys 11-12 100m IM,Heat 1 of 2,6,"Vance, Freya",11,Dolphins,NT
+#41 Boys 11-12 100m IM,Heat 2 of 2,1,"Grier, Piper",12,Sharks,2:50.59
+#41 Boys 11-12 100m IM,Heat 2 of 2,2,"Bennett, Leo",11,Sharks,2:06.09
+#41 Boys 11-12 100m IM,Heat 2 of 2,3,"Whitfield, Josie",12,Dolphins,1:58.28
+#41 Boys 11-12 100m IM,Heat 2 of 2,4,"Larkspur, Liam",12,Sharks,2:04.26
+#41 Boys 11-12 100m IM,Heat 2 of 2,5,"Bennett, Sable",12,Sharks,2:11.49
+#41 Boys 11-12 100m IM,Heat 2 of 2,6,"Ellison, Vera",11,Dolphins,2:52.45
+#42 Girls 11-12 100m IM,Heat 1 of 2,1,—,,,
+#42 Girls 11-12 100m IM,Heat 1 of 2,2,"Marchetti, Elsie",12,Dolphins,NT
+#42 Girls 11-12 100m IM,Heat 1 of 2,3,"Kessler, Sable",11,Sharks,2:44.33
+#42 Girls 11-12 100m IM,Heat 1 of 2,4,"Jansen, Liam",11,Dolphins,2:40.24
+#42 Girls 11-12 100m IM,Heat 1 of 2,5,"Zephyr, Wren",11,Sharks,NT
+#42 Girls 11-12 100m IM,Heat 1 of 2,6,—,,,
+#42 Girls 11-12 100m IM,Heat 2 of 2,1,"Prescott, Theo",11,Sharks,2:23.14
+#42 Girls 11-12 100m IM,Heat 2 of 2,2,"Mercer, Luna",12,Sharks,2:12.06
+#42 Girls 11-12 100m IM,Heat 2 of 2,3,"Holloway, Emmett",11,Dolphins,1:56.07
+#42 Girls 11-12 100m IM,Heat 2 of 2,4,"Sorensen, Sable",12,Sharks,2:17.74
+#42 Girls 11-12 100m IM,Heat 2 of 2,5,"Cassidy, Silas",11,Sharks,2:30.30
+#42 Girls 11-12 100m IM,Heat 2 of 2,6,"Sorensen, Dahlia",12,Sharks,2:34.45
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,1,"Ekstrom, Otto",15,Sharks,2:05.15
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,2,"Norwood, Emmett",19,Sharks,1:58.59
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,3,"Sorensen, Nina",19,Dolphins,2:03.22
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,4,"Kessler, Liam",17,Sharks,2:18.34
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,5,"Brennan, Theo",18,Sharks,2:06.89
+#43 Boys 13 & Over 100m IM,Heat 1 of 2,6,"Ashby, Owen",13,Dolphins,NT
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,1,"Delgado, Cole",19,Sharks,2:04.86
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,2,"Jorgensen, Rhys",16,Dolphins,1:41.80
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,3,"Prescott, Arlo",13,Sharks,1:35.67
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,4,"Norwood, Rex",14,Sharks,1:31.00
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,5,"Vance, Rhys",17,Sharks,1:50.57
+#43 Boys 13 & Over 100m IM,Heat 2 of 2,6,"Sorensen, Ruby",13,Sharks,1:53.27
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,1,"Ibarra, Nora",18,Dolphins,NT
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,2,"Prescott, Gus",19,Dolphins,NT
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,3,"Marchetti, Poppy",18,Sharks,2:30.79
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,4,"Grier, Sable",13,Dolphins,NT
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,5,"Marchetti, Nova",18,Dolphins,NT
+#44 Girls 13 & Over 100m IM,Heat 1 of 2,6,—,,,
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,1,"Ekstrom, Owen",18,Sharks,2:29.02
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,2,"Redwood, Maren",18,Sharks,2:03.24
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,3,"Yardley, Emmett",18,Sharks,1:57.34
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,4,"Bennett, Wyatt",15,Dolphins,2:05.87
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,5,"Marchetti, Otto",15,Sharks,2:05.81
+#44 Girls 13 & Over 100m IM,Heat 2 of 2,6,"Yardley, Luna",14,Dolphins,2:27.05
