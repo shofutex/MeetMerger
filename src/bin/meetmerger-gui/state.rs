@@ -39,6 +39,7 @@ pub struct Wizard {
     pub export_start_event: String,
     pub team_abbreviations: HashMap<String, String>,
     pub show_records: bool,
+    pub show_entry_times: bool,
     pub is_exporting: bool,
     pub export_result: Option<Result<PathBuf, String>>,
 
@@ -79,6 +80,7 @@ pub enum Message {
     TeamAbbreviationChanged(String, String),
     MeetTitleChanged(String),
     ToggleShowRecords,
+    ToggleShowEntryTimes,
     ExportPdf,
     ExportPathPicked(Option<PathBuf>),
     PdfExported(Result<PathBuf, String>),

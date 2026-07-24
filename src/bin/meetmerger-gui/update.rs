@@ -141,6 +141,10 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
             state.show_records = !state.show_records;
             Task::none()
         }
+        Message::ToggleShowEntryTimes => {
+            state.show_entry_times = !state.show_entry_times;
+            Task::none()
+        }
         Message::ExportPdf => {
             if state.meet.is_none() {
                 return Task::none();
@@ -167,6 +171,7 @@ pub fn update(state: &mut Wizard, message: Message) -> Task<Message> {
                     state.team_abbreviations.clone(),
                     start_event,
                     state.show_records,
+                    state.show_entry_times,
                     path,
                 ),
                 Message::PdfExported,

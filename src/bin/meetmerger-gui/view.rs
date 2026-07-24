@@ -371,6 +371,13 @@ fn view_team_abbreviations(state: &Wizard) -> (Element<'_, Message>, Element<'_,
     };
     col = col.push(button(records_button_label).on_press(Message::ToggleShowRecords));
 
+    let entry_times_button_label = if state.show_entry_times {
+        "Hide entry times on heat sheet"
+    } else {
+        "Show entry times on heat sheet"
+    };
+    col = col.push(button(entry_times_button_label).on_press(Message::ToggleShowEntryTimes));
+
     if state.show_changes {
         let changes = export::build_changes(meet, &state.mixed_heats);
         if changes.is_empty() {

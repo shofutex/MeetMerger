@@ -4,7 +4,7 @@ use std::path::Path;
 use printpdf::*;
 
 use crate::merge::{MixedHeat, MixedHeatSource};
-use crate::model::{Event, Lane, Meet, Record, Swimmer};
+use crate::model::{Event, Lane, Meet, Record, SeedTime, Swimmer};
 
 // US Letter portrait, in millimeters.
 const PAGE_W: f32 = 215.9;
@@ -140,6 +140,7 @@ pub struct PrintSwimmer {
     pub age: u32,
     pub team: String,
     pub exhibition: bool,
+    pub seed_time: SeedTime,
 }
 
 fn full_name_len(last: &str, first: &str) -> usize {
@@ -184,6 +185,7 @@ fn swimmer_rows(lanes: &[Lane], abbreviations: &HashMap<String, String>) -> Vec<
                 age: s.age,
                 team: abbreviate(&s.team, abbreviations).to_string(),
                 exhibition: s.exhibition,
+                seed_time: s.seed_time,
             })
         })
         .collect()
@@ -713,8 +715,9 @@ enum PrintLine<'a> {
     Divider,
     Record(&'a PrintRecord),
     HeatLabel(&'a str),
-    // (lane, last_name, first_name, age, team, exhibition)
-    Swimmer(u32, &'a str, &'a str, u32, &'a str, bool),
+    // (lane, last_name, first_name, age, team, exhibition, entry time text —
+    // Some(text) prints it, None draws the hand-timing blank line instead)
+    Swimmer(u32, &'a str, &'a str, u32, &'a str, bool, Option<String>),
     Gap,
 }
 
@@ -731,7 +734,7 @@ impl PrintLine<'_> {
             PrintLine::Divider => DIVIDER_LINE_H,
             PrintLine::Record(_) => RECORD_LINE_H + RECORD_TEAM_LINE_H,
             PrintLine::HeatLabel(_) => HEAT_LABEL_LINE_H,
-            PrintLine::Swimmer(_, last, first, _, _, exhibition) => {
+            PrintLine::Swimmer(_, last, first, _, _, exhibition, _) => {
                 if full_name_len(last, first) > name_wrap_threshold(*exhibition) {
                     SWIMMER_LINE_H * 2.0
                 } else {
@@ -757,7 +760,7 @@ impl Chunk<'_> {
     }
 }
 
-fn build_chunks(events: &[PrintEvent]) -> Vec<Chunk<'_>> {
+fn build_chunks(events: &[PrintEvent], show_entry_times: bool) -> Vec<Chunk<'_>> {
     let mut chunks = Vec::new();
     for event in events {
         for (index, heat) in event.heats.iter().enumerate() {
@@ -779,6 +782,7 @@ fn build_chunks(events: &[PrintEvent]) -> Vec<Chunk<'_>> {
                     swimmer.age,
                     &swimmer.team,
                     swimmer.exhibition,
+                    show_entry_times.then(|| swimmer.seed_time.to_string()),
                 ));
             }
             chunks.push(Chunk { lines });
@@ -1062,7 +1066,7 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
             PrintLine::HeatLabel(label) => {
                 show_text_at(ops, BuiltinFont::HelveticaOblique, 7.0, col_x, y, label);
             }
-            PrintLine::Swimmer(lane, last, first, age, team, exhibition) => {
+            PrintLine::Swimmer(lane, last, first, age, team, exhibition, entry_time) => {
                 show_text_at(
                     ops,
                     BuiltinFont::Helvetica,
@@ -1125,14 +1129,28 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
                     rest_y,
                     team,
                 );
-                draw_hline(
-                    ops,
-                    col_x + TIME_X,
-                    col_x + COL_WIDTH,
-                    rest_y - 0.5,
-                    0.5,
-                    rgb(0.0, 0.0, 0.0),
-                );
+                match entry_time {
+                    Some(entry_time) => {
+                        show_text_at(
+                            ops,
+                            BuiltinFont::Helvetica,
+                            7.0,
+                            col_x + TIME_X,
+                            rest_y,
+                            entry_time,
+                        );
+                    }
+                    None => {
+                        draw_hline(
+                            ops,
+                            col_x + TIME_X,
+                            col_x + COL_WIDTH,
+                            rest_y - 0.5,
+                            0.5,
+                            rgb(0.0, 0.0, 0.0),
+                        );
+                    }
+                }
             }
             PrintLine::Gap => {}
         }
@@ -1140,8 +1158,13 @@ fn emit_column(ops: &mut Vec<Op>, lines: &[PrintLine<'_>], col_x: f32) {
     }
 }
 
-pub fn write_pdf(meet_title: &str, events: &[PrintEvent], path: &Path) -> Result<(), String> {
-    let chunks = build_chunks(events);
+pub fn write_pdf(
+    meet_title: &str,
+    events: &[PrintEvent],
+    show_entry_times: bool,
+    path: &Path,
+) -> Result<(), String> {
+    let chunks = build_chunks(events, show_entry_times);
     let columns = pack_columns(chunks);
     let pages: Vec<&[Vec<PrintLine<'_>>]> = if columns.is_empty() {
         vec![&[]]
@@ -1617,11 +1640,75 @@ mod tests {
 
     #[test]
     fn long_names_take_two_lines_short_names_take_one() {
-        let short = PrintLine::Swimmer(1, "Doe", "Jo", 10, "TST", false);
+        let short = PrintLine::Swimmer(1, "Doe", "Jo", 10, "TST", false, None);
         assert_eq!(short.height(), SWIMMER_LINE_H);
 
-        let long = PrintLine::Swimmer(1, "Featherstonehaugh", "Jonathan", 10, "TST", false);
+        let long = PrintLine::Swimmer(1, "Featherstonehaugh", "Jonathan", 10, "TST", false, None);
         assert_eq!(long.height(), SWIMMER_LINE_H * 2.0);
+    }
+
+    fn print_event_with_seed_time(seed_time: SeedTime) -> PrintEvent {
+        PrintEvent {
+            event_name: "#1 Boys 10-11 25m Freestyle".to_string(),
+            heats: vec![PrintHeat {
+                heat_label: "Heat 1 of 1".to_string(),
+                swimmers: vec![PrintSwimmer {
+                    lane: 1,
+                    last_name: "Doe".to_string(),
+                    first_name: "Jane".to_string(),
+                    age: 10,
+                    team: "TST".to_string(),
+                    exhibition: false,
+                    seed_time,
+                }],
+            }],
+            record: None,
+        }
+    }
+
+    #[test]
+    fn build_chunks_omits_entry_time_text_when_show_entry_times_is_false() {
+        let events = vec![print_event_with_seed_time(SeedTime::Seconds(20.0))];
+        let chunks = build_chunks(&events, false);
+        let swimmer_line = chunks[0]
+            .lines
+            .iter()
+            .find(|line| matches!(line, PrintLine::Swimmer(..)))
+            .unwrap();
+        let PrintLine::Swimmer(.., entry_time) = swimmer_line else {
+            unreachable!()
+        };
+        assert_eq!(entry_time, &None);
+    }
+
+    #[test]
+    fn build_chunks_includes_formatted_entry_time_when_show_entry_times_is_true() {
+        let events = vec![print_event_with_seed_time(SeedTime::Seconds(65.43))];
+        let chunks = build_chunks(&events, true);
+        let swimmer_line = chunks[0]
+            .lines
+            .iter()
+            .find(|line| matches!(line, PrintLine::Swimmer(..)))
+            .unwrap();
+        let PrintLine::Swimmer(.., entry_time) = swimmer_line else {
+            unreachable!()
+        };
+        assert_eq!(entry_time.as_deref(), Some("1:05.43"));
+    }
+
+    #[test]
+    fn build_chunks_formats_no_time_entries_as_nt() {
+        let events = vec![print_event_with_seed_time(SeedTime::NoTime)];
+        let chunks = build_chunks(&events, true);
+        let swimmer_line = chunks[0]
+            .lines
+            .iter()
+            .find(|line| matches!(line, PrintLine::Swimmer(..)))
+            .unwrap();
+        let PrintLine::Swimmer(.., entry_time) = swimmer_line else {
+            unreachable!()
+        };
+        assert_eq!(entry_time.as_deref(), Some("NT"));
     }
 
     #[test]
@@ -1639,7 +1726,7 @@ mod tests {
         };
         let events = build_print_events(&meet, &HashSet::new(), &[], &no_abbreviations(), 1, false);
 
-        let chunks = build_chunks(&events);
+        let chunks = build_chunks(&events, false);
         let columns = pack_columns(chunks);
 
         // Count how many "Heat 2 of 2" heat-label lines land in each column;
@@ -1807,11 +1894,12 @@ mod tests {
                     age: 10,
                     team: "TST".to_string(),
                     exhibition: false,
+                    seed_time: SeedTime::Seconds(20.0),
                 }],
             }],
             record: None,
         };
-        write_pdf("Test Meet", &[print_event], &path).expect("write_pdf should succeed");
+        write_pdf("Test Meet", &[print_event], false, &path).expect("write_pdf should succeed");
 
         let bytes = std::fs::read(&path).expect("file should exist");
         assert!(bytes.starts_with(b"%PDF-"));
@@ -1855,7 +1943,7 @@ mod tests {
         assert_eq!(events.len(), meet.events.len());
 
         let out_path = std::env::temp_dir().join("meetmerger_sample_export.pdf");
-        write_pdf(&meet.title, &events, &out_path).expect("write_pdf should succeed");
+        write_pdf(&meet.title, &events, true, &out_path).expect("write_pdf should succeed");
         let bytes = std::fs::read(&out_path).expect("file should exist");
         assert!(bytes.starts_with(b"%PDF-"));
         println!(

@@ -86,6 +86,7 @@ pub async fn export_pdf(
     abbreviations: HashMap<String, String>,
     start_event: u32,
     show_records: bool,
+    show_entry_times: bool,
     path: PathBuf,
 ) -> Result<PathBuf, String> {
     let events = export::build_print_events(
@@ -96,7 +97,7 @@ pub async fn export_pdf(
         start_event,
         show_records,
     );
-    export::write_pdf(&meet.title, &events, &path)?;
+    export::write_pdf(&meet.title, &events, show_entry_times, &path)?;
     Ok(path)
 }
 
