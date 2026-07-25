@@ -57,6 +57,8 @@ Finally, you have the option to generate a new heat sheet with the mixed heats a
 You have the option to enter abbreviations for the teams if desired.
 
 Some swim meets have a different starting point for the events then cycle through modulo. There's an option to start with a higher level events in the heat sheet and timer sheets as well.
-![Screenshot of the final export page](/images/export.png). In these cases, there may be an event where you want a page break as well.
+![Screenshot of the final export page](/images/export.png)
+
+In these cases, there may be an event where you want a page break as well.
 
 In some cases, you may want to include records provided in the input and/or show entry times.
