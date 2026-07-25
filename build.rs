@@ -35,7 +35,10 @@ fn main() {
     }
 
     let bytes = std::fs::read(&font_path).expect("Failed to read fetched font");
-    let actual_sha256 = format!("{:x}", Sha256::digest(&bytes));
+    let actual_sha256 = Sha256::digest(&bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
     if actual_sha256 != EXPECTED_SHA256 {
         std::fs::remove_file(&font_path).ok();
         panic!(
