@@ -12,7 +12,7 @@ use state::{Message, Wizard};
 use update::update;
 use view::view;
 
-static INTER: &[u8] = include_bytes!("../../../fonts/Inter-Regular.ttf");
+static INTER: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/Inter-Regular.ttf"));
 
 /// MeetMerger GUI wizard.
 ///
